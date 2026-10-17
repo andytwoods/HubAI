@@ -5,10 +5,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const live = document.getElementById("live");
   const url = document.getElementById("board-view").dataset.reorderUrl;
   let dragged = null;
+  let from = null;
+  // People reorder To do and can park a card in Blocked; moving it to Doing or Done is for the agent that claims it
+  // (the status dropdown still allows a deliberate override).
+  const allowed = (to) => from !== "todo" || to === "todo" || to === "blocked";
 
   live.addEventListener("dragstart", (e) => {
     dragged = e.target.closest(".task-card");
     if (!dragged) return;
+    from = dragged.closest(".board-column").dataset.status;
     document.body.classList.add("is-dragging");
     dragged.classList.add("is-dragging");
     e.dataTransfer.effectAllowed = "move";
@@ -18,9 +23,13 @@ document.addEventListener("DOMContentLoaded", () => {
   live.addEventListener("dragover", (e) => {
     const column = e.target.closest(".board-column");
     if (!dragged || !column) return;
+    live.querySelectorAll(".is-drop-target, .is-no-drop").forEach((c) => c.classList.remove("is-drop-target", "is-no-drop"));
+    if (!allowed(column.dataset.status)) {
+      column.classList.add("is-no-drop");
+      return;  // no preventDefault: the browser shows "not allowed" and refuses the drop
+    }
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    live.querySelectorAll(".board-column.is-drop-target").forEach((c) => c.classList.remove("is-drop-target"));
     column.classList.add("is-drop-target");
     // Insert before the first card whose vertical midpoint is below the pointer, else at the end.
     const cards = [...column.querySelectorAll(".task-card:not(.is-dragging)")];
@@ -31,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   live.addEventListener("drop", (e) => {
     const column = e.target.closest(".board-column");
-    if (!dragged || !column) return;
+    if (!dragged || !column || !allowed(column.dataset.status)) return;
     e.preventDefault();
     const ids = [...column.querySelectorAll(".task-card")].map((c) => c.dataset.taskId).join(",");
     htmx.ajax("POST", url, { target: "#live", swap: "morph:innerHTML", values: { status: column.dataset.status, ids } });
@@ -41,6 +50,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (dragged) dragged.classList.remove("is-dragging");
     dragged = null;
     document.body.classList.remove("is-dragging");
-    live.querySelectorAll(".is-drop-target").forEach((c) => c.classList.remove("is-drop-target"));
+    live.querySelectorAll(".is-drop-target, .is-no-drop").forEach((c) => c.classList.remove("is-drop-target", "is-no-drop"));
   });
 });

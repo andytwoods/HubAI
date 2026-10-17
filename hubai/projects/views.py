@@ -71,9 +71,9 @@ def _live_context(membership):
     project = membership.project
     active_since = timezone.now() - timedelta(minutes=10)
     tasks = project.tasks.select_related("claimed_by__user")
+    # All four columns are rendered; an empty Blocked one is hidden by CSS except while a card is being dragged,
+    # when it's the only place a To do card may be dropped besides its own column.
     columns = [(value, label, [t for t in tasks if t.status == value]) for value, label in Task.Status.choices]
-    # An empty Blocked column is just noise; the other three always show so the board keeps its shape.
-    columns = [c for c in columns if c[2] or c[0] != Task.Status.BLOCKED]
     return {
         "membership": membership,
         "project": project,

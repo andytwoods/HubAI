@@ -158,8 +158,15 @@ def reorder_tasks(membership, task_ids, status=None):
             Task.objects.filter(pk=task_id).update(position=position)
     if status is not None:
         for task_id in ids:
-            if tasks[task_id].status != status:
-                update_task(membership, task_id, status, override=True)
+            task = tasks[task_id]
+            if task.status == status:
+                continue
+            if task.status == Task.Status.TODO and status != Task.Status.BLOCKED:
+                raise HubError(
+                    f"#{task.pk} is waiting for an agent to claim it; drag it to Blocked to park it, "
+                    "or use its dropdown to override."
+                )
+            update_task(membership, task_id, status, override=True)
 
 
 def _holder(task):

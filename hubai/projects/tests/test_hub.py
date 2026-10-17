@@ -257,10 +257,10 @@ def test_empty_blocked_column_is_hidden(client, team):
     project, ada, _ = team
     client.force_login(ada.user)
     url = reverse("projects:detail", args=[project.pk])
-    assert "Blocked" not in client.get(url, headers={"HX-Request": "1"}).text
+    assert "is-empty-blocked" in client.get(url, headers={"HX-Request": "1"}).text
     task = hub.create_task(ada, "Stuck")
     hub.update_task(ada, task.pk, "blocked", override=True)
-    assert "Blocked" in client.get(url, headers={"HX-Request": "1"}).text
+    assert "is-empty-blocked" not in client.get(url, headers={"HX-Request": "1"}).text
 
 
 def test_failed_attempt_returns_task_then_blocks_after_three(client, team):
@@ -331,11 +331,20 @@ def test_dragging_reorders_a_column_and_can_change_status(client, team):
     url = reverse("projects:task_reorder", args=[project.pk])
     client.post(url, {"status": "todo", "ids": f"{third.pk},{first.pk},{second.pk}"}, headers={"HX-Request": "1"})
     assert [t.title for t in project.tasks.all()] == ["three", "one", "two"]
-    # Dropped into Doing: it changes status (as a human override) and keeps its place.
-    response = client.post(url, {"status": "doing", "ids": str(second.pk)}, headers={"HX-Request": "1"})
+    # A To do card can be parked in Blocked, but not dragged to Doing or Done: agents claim their own work.
+    with pytest.raises(hub.HubError, match="waiting for an agent"):
+        hub.reorder_tasks(ada, [second.pk], "doing")
+    client.post(url, {"status": "done", "ids": str(second.pk)}, headers={"HX-Request": "1"})
+    second.refresh_from_db()
+    assert second.status == "todo"
+    response = client.post(url, {"status": "blocked", "ids": str(second.pk)}, headers={"HX-Request": "1"})
+    second.refresh_from_db()
+    assert second.status == "blocked"
+    assert "set #%d two to blocked" % second.pk in response.text
+    # Out of Blocked (or Doing), any column is fine.
+    client.post(url, {"status": "doing", "ids": str(second.pk)}, headers={"HX-Request": "1"})
     second.refresh_from_db()
     assert second.status == "doing" and second.claimed_by == ada
-    assert "set #%d two to doing" % second.pk in response.text
     # list_tasks follows the board order, so a worker takes the top To do card first.
     _, text = tool(client, ada.token, "list_tasks", status="todo")
     assert [t["title"] for t in json.loads(text)] == ["three", "one"]

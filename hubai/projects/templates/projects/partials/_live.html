@@ -2,7 +2,7 @@
   <div class="column is-8">
     <div class="columns is-mobile">
       {% for value, label, tasks in columns %}
-        <div class="column" id="column-{{ value }}" data-column="{{ value }}">
+        <div class="column{% if value == "blocked" and not tasks %} is-empty-blocked{% endif %}" id="column-{{ value }}" data-column="{{ value }}">
           <div class="column-head">
             <h2 class="title is-6 mb-0 column-label">{{ label }} <span class="tag is-rounded">{{ tasks|length }}</span></h2>
             <div class="column-tools" role="group" aria-label="{{ label }} column view">
