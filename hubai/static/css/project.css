@@ -5,3 +5,6 @@ pre.cmd { white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; }
 .copy-button { margin: 0.25rem 0 0.5rem; }
 pre.cmd + .copy-button { display: block; }
 .tag .copy-button { margin: 0 0 0 0.5rem; height: 1.6em; }
+/* Sticky footer: footer sits at the bottom of the window when the page is short. */
+body { display: flex; flex-direction: column; min-height: 100vh; }
+body > main { flex: 1 0 auto; }
