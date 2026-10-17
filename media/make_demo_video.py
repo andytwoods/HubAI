@@ -167,14 +167,40 @@ def scene_fridge(t):
     return im, d
 
 def scene4(t, icon):
-    im = Image.new("RGB", (W, H), BG); d = ImageDraw.Draw(im)
-    s = 0.8 + 0.2 * ease(t / 0.5)
-    ic = icon.resize((int(180 * s), int(180 * s)))
-    im.paste(ic, (W//2 - ic.width//2, 110), ic)
-    d.text((W/2, 320), "HubAI", font=f(B, 84), fill=INK, anchor="ma")
-    d.text((W/2, 425), "hubai.applikuapp.com", font=f(B, 40), fill=INDIGO, anchor="ma")
-    laptop(d, 230, 330, 150, "happy"); tower(d, 880, 250, 80, "happy")
+    """The robot army: rows of robots and robot-faced devices marching behind the logo."""
+    im = Image.new("RGB", (W, H), (226, 230, 248)); d = ImageDraw.Draw(im)
+    rows = [(150, 0.45, 22, 0.55), (250, 0.6, 30, 0.7), (370, 0.8, 42, 0.85), (520, 1.0, 58, 1.0)]
+    kinds = ["robot", "laptop", "robot", "tower", "robot", "toaster"]
+    for r, (y, scale, size, alpha) in enumerate(rows):
+        step = size * 3.2
+        offset = (t * 60 * scale) % step
+        for k in range(-1, int(W / step) + 2):
+            x = k * step + offset + (r % 2) * step / 2
+            bob = abs(math.sin(t * 7 + k + r)) * 8 * scale
+            kind = kinds[(k + r) % len(kinds)]
+            layer = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ld = ImageDraw.Draw(layer)
+            if kind == "robot":
+                robot(ld, x, y - bob, size * 0.7, "angry" if (k + r) % 4 == 0 else "happy")
+            elif kind == "laptop":
+                laptop(ld, x, y - bob + size * 0.4, size * 1.6, "happy")
+            elif kind == "tower":
+                tower(ld, x, y - bob + size * 0.8, max(size * 1.1, 40), "happy")
+            else:
+                ld.rounded_rectangle([x - size, y - bob - size * 0.5, x + size, y - bob + size * 0.6], radius=size * 0.3, fill=(200, 205, 222))
+                face_on(ld, x, y - bob, size * 0.25, "happy")
+            if alpha < 1:
+                a_ = layer.getchannel("A").point(lambda v, al=alpha: int(v * al)); layer.putalpha(a_)
+            im.paste(layer, (0, 0), layer)
+    d = ImageDraw.Draw(im)
+    pop = ease(t / 0.5)
+    if pop > 0.1:
+        d.rounded_rectangle([W/2 - 300, 40, W/2 + 300, 40 + 330 * pop], radius=min(24, 330 * pop / 2 - 1), fill="white")
+    if pop > 0.9:
+        ic = icon.resize((120, 120)); im.paste(ic, (int(W/2 - 60), 60), ic)
+        d.text((W/2, 190), "HubAI", font=f(B, 76), fill=INK, anchor="ma")
+        d.text((W/2, 290), "hubai.applikuapp.com", font=f(B, 36), fill=INDIGO, anchor="ma")
     return im, d
+
 
 def main():
     icon = Image.open(IMG / "icon-512.png").convert("RGBA")
