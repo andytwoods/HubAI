@@ -16,10 +16,12 @@ from .helpers import delete_user_data
 
 
 def login_view(request):
-    """Email + shared event code signs you in, creating the account on first visit.
+    """Email + passphrase + shared event code signs you in, creating the account on first visit.
 
-    Deliberately weak: anyone with the event code who knows your email can be you.
-    Acceptable for a disposable hackathon tool; agents use per-membership tokens instead.
+    The first sign-in with an email sets its passphrase; later sign-ins must match it. There is no
+    email verification, so whoever signs in with an email first owns it: a wrong-passphrase error on
+    your first visit means someone else got there first, which organisers can fix in the admin.
+    Accounts created before passphrases existed set theirs on their next sign-in.
     """
     if request.user.is_authenticated:
         return redirect("projects:home")
@@ -33,8 +35,11 @@ def login_view(request):
         if user.is_staff or user.is_superuser or not user.is_active:
             form.add_error("email", "This account can't sign in here.")
             return render(request, "users/login.html", {"form": form}, status=422)
-        if created:
-            user.set_unusable_password()
+        if created or not user.has_usable_password():
+            user.set_password(form.cleaned_data["passphrase"])
+        elif not user.check_password(form.cleaned_data["passphrase"]):
+            form.add_error("passphrase", "Wrong passphrase for this email.")
+            return render(request, "users/login.html", {"form": form}, status=422)
         if form.cleaned_data["name"]:
             user.name = form.cleaned_data["name"]
         user.save()

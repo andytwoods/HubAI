@@ -7,7 +7,7 @@ pytestmark = pytest.mark.django_db
 
 def test_new_email_with_event_code_creates_account_and_signs_in(client):
     response = client.post(
-        reverse("users:login"), {"email": "Ada@Example.com", "name": "Ada", "event_code": "TEST-EVENT"}
+        reverse("users:login"), {"email": "Ada@Example.com", "name": "Ada", "passphrase": "otter-maple", "event_code": "TEST-EVENT"}
     )
     assert response.status_code == 302
     user = get_user_model().objects.get()
@@ -16,22 +16,51 @@ def test_new_email_with_event_code_creates_account_and_signs_in(client):
     assert client.get(reverse("projects:home")).status_code == 200
 
 
-def test_same_email_returns_to_existing_account(client):
-    get_user_model().objects.create_user(email="ada@example.com", name="Ada")
-    client.post(reverse("users:login"), {"email": "ada@example.com", "event_code": "test-event"})
+def test_same_email_and_passphrase_returns_to_existing_account(client):
+    get_user_model().objects.create_user(email="ada@example.com", name="Ada", password="otter-maple")
+    response = client.post(
+        reverse("users:login"), {"email": "ada@example.com", "passphrase": "otter-maple", "event_code": "test-event"}
+    )
+    assert response.status_code == 302
     assert get_user_model().objects.count() == 1
     assert get_user_model().objects.get().name == "Ada"
 
 
+def test_wrong_passphrase_is_rejected(client):
+    get_user_model().objects.create_user(email="ada@example.com", password="otter-maple")
+    response = client.post(
+        reverse("users:login"), {"email": "ada@example.com", "passphrase": "guess-guess", "event_code": "test-event"}
+    )
+    assert response.status_code == 422
+    assert "_auth_user_id" not in client.session
+
+
+def test_account_without_passphrase_sets_one_on_next_sign_in(client):
+    user = get_user_model().objects.create_user(email="ada@example.com")
+    user.set_unusable_password()
+    user.save()
+    response = client.post(
+        reverse("users:login"), {"email": "ada@example.com", "passphrase": "otter-maple", "event_code": "test-event"}
+    )
+    assert response.status_code == 302
+    assert get_user_model().objects.get().check_password("otter-maple")
+
+
+def test_short_passphrase_is_rejected(client):
+    response = client.post(reverse("users:login"), {"email": "x@example.com", "passphrase": "abc", "event_code": "test-event"})
+    assert response.status_code == 422
+    assert not get_user_model().objects.exists()
+
+
 def test_wrong_event_code_is_rejected(client):
-    response = client.post(reverse("users:login"), {"email": "x@example.com", "event_code": "nope"})
+    response = client.post(reverse("users:login"), {"email": "x@example.com", "passphrase": "otter-maple", "event_code": "nope"})
     assert response.status_code == 422
     assert not get_user_model().objects.exists()
 
 
 def test_next_redirect_rejects_other_hosts(client):
     url = reverse("users:login") + "?next=https://evil.example/"
-    response = client.post(url, {"email": "x@example.com", "event_code": "test-event"})
+    response = client.post(url, {"email": "x@example.com", "passphrase": "otter-maple", "event_code": "test-event"})
     assert response.url == reverse("projects:home")
 
 
@@ -40,7 +69,7 @@ def test_login_attempts_are_rate_limited(client):
 
     cache.clear()
     codes = [
-        client.post(reverse("users:login"), {"email": "x@example.com", "event_code": "wrong"}).status_code
+        client.post(reverse("users:login"), {"email": "x@example.com", "passphrase": "otter-maple", "event_code": "wrong"}).status_code
         for _ in range(12)
     ]
     assert codes[0] == 422 and codes[-1] == 429
@@ -54,6 +83,6 @@ def test_pages_have_icons_and_link_preview(client):
 
 def test_staff_accounts_cannot_use_event_code_login(client):
     get_user_model().objects.create_superuser(email="admin@example.com", password="x")
-    response = client.post(reverse("users:login"), {"email": "admin@example.com", "event_code": "test-event"})
+    response = client.post(reverse("users:login"), {"email": "admin@example.com", "passphrase": "xxxxxx", "event_code": "test-event"})
     assert response.status_code == 422
     assert "_auth_user_id" not in client.session

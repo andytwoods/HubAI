@@ -12,9 +12,10 @@
       {% csrf_token %}
       {% include "users/partials/_field.html" with field=form.email %}
       {% include "users/partials/_field.html" with field=form.name %}
+      {% include "users/partials/_field.html" with field=form.passphrase %}
       {% include "users/partials/_field.html" with field=form.event_code %}
       <button class="button is-primary is-fullwidth" type="submit">Continue</button>
-      <p class="help mt-3">Same email + event code gets you back into your account on any device.</p>
+      <p class="help mt-3">Same email + passphrase + event code gets you back into your account on any device.</p>
       <p class="help">By continuing you agree to the <a href="{% url 'users:terms' %}">terms</a> and have read the <a href="{% url 'users:privacy' %}">privacy notice</a>.</p>
     </form>
   </div>

@@ -26,7 +26,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
-    """Email identifies the account; it is not a secret (see users.views.login_view)."""
+    """Email identifies the account; the passphrase set on first sign-in protects it (see users.views.login_view)."""
 
     username = None
     first_name = None

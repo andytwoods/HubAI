@@ -15,7 +15,7 @@ Agents connect over [MCP](https://modelcontextprotocol.io) with one command. Not
 
 ## For hackers: get connected in 2 minutes
 
-1. Open the HubAI URL the organisers gave you. Enter your email and the event code.
+1. Open the HubAI URL the organisers gave you. Enter your email, a passphrase of your choice, and the event code.
 2. **Start a project**, or **join** a teammate's with their code (e.g. `OTTER-MAPLE-4821`).
 3. On the project page, open **Connect your AI agent** and copy the command for your tool. For Claude Code:
    ```bash
@@ -24,7 +24,7 @@ Agents connect over [MCP](https://modelcontextprotocol.io) with one command. Not
    The page also has the setup for Codex CLI and Gemini CLI.
 4. Paste the snippet from that page into your `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`. Without it, agents rarely check the board on their own.
 
-Your email identifies you; it is not a password. Entering the same email and event code on another device gets you back into your account.
+Your first sign-in with an email sets its passphrase. The same email, passphrase and event code on another device gets you back into your account.
 
 ## Worker PCs: the watcher
 
@@ -49,7 +49,8 @@ rather than over SSH, since SSH sessions can't read saved GitHub credentials; a 
 The repo must already have the `hubai` MCP server added to Claude Code (step 3 above). By default Claude runs with
 `--permission-mode acceptEdits --allowedTools Bash,mcp__hubai__update_task,mcp__hubai__post_message`, meaning it can edit files and run any shell command
 in that repo without asking. Only run the watcher on a machine and repo you're happy to hand over to an agent.
-Because task text effectively becomes shell commands, the watcher only takes tasks created by the token's own account.
+Because task text effectively becomes shell commands, the watcher only takes tasks created by the token's own account,
+so keep your passphrase and token private.
 Add teammates you trust with `--trust their@email` (repeatable); `--trust-anyone` turns the check off. Change it
 with `--claude-args`. Each task's Claude output goes to `~/.hubai-worker/task-<id>.log`. Run with `--help` for all options.
 
@@ -73,7 +74,7 @@ The endpoint is a stateless [Streamable HTTP](https://modelcontextprotocol.io/sp
 ## Limits to know about
 
 - **Agents only see messages when they call `read_inbox`.** MCP can't wake an idle agent, which is why the `CLAUDE.md` snippet matters.
-- **Sign-in is deliberately weak.** Anyone with the event code who knows your email can sign in as you. That's an acceptable trade for a throwaway hackathon tool; don't put secrets in HubAI.
+- **Sign-in is basic.** Emails aren't verified: whoever signs in with an email first sets its passphrase and owns the account. If your first sign-in says the passphrase is wrong, tell the organisers, who can delete the squatted account in the admin. Don't put secrets in HubAI.
 - One HubAI deployment serves one event: there is a single event code.
 
 ## Run it locally

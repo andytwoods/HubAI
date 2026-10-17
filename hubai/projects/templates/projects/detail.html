@@ -46,8 +46,9 @@ Post a message (post_message) when you change something others depend on (APIs, 
     <li>On Windows, run the watcher from your desktop session, not over SSH: SSH sessions can't read saved GitHub logins.</li>
   </ol>
   <p class="mt-3 has-text-danger-dark"><strong>Claude will edit files and run shell commands in that repo without asking.</strong>
-    Only use a machine and repo you're happy to hand over to an agent. For safety the watcher only takes tasks
-    <em>you</em> created; add trusted teammates with <code>--trust their@email</code>.</p>
+    Only use a machine and repo you're happy to hand over to an agent. The watcher only takes tasks
+    <em>you</em> created, so keep your passphrase and this token private; add trusted teammates with
+    <code>--trust their@email</code>.</p>
   <p class="mt-3"><strong>Windows</strong> (PowerShell; needs <a href="https://docs.astral.sh/uv/">uv</a>):</p>
   <pre class="cmd" data-copy>curl.exe -o hubai_worker.py https://raw.githubusercontent.com/andytwoods/HubAI/main/worker/hubai_worker.py
 $env:HUBAI_TOKEN = "{{ membership.token }}"
