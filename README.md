@@ -105,6 +105,10 @@ The repo includes a `Dockerfile`, `run.sh` (uvicorn), `release.sh` (migrations) 
 | `DJANGO_ADMIN_URL` | no | Admin path, default `admin/` |
 | `WEB_CONCURRENCY` | no | uvicorn workers, default 2 |
 
+## Security
+
+Reviewed by Claude, GPT, Gemini and Qwen; see [SECURITY.md](SECURITY.md) for what was checked, fixed, and is still a known limit.
+
 ## Stack
 
 Django 6, HTMX and Bulma (both self-hosted), SQLite locally and Postgres in production, served by uvicorn.
