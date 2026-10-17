@@ -1,0 +1,53 @@
+<div class="columns">
+  <div class="column is-8">
+    <div class="columns is-mobile">
+      {% for value, label, tasks in columns %}
+        <div class="column">
+          <h2 class="title is-6">{{ label }} <span class="tag is-rounded">{{ tasks|length }}</span></h2>
+          <div class="board-column">
+            {% for task in tasks %}
+              <div class="box p-3 mb-2">
+                <p class="has-text-weight-semibold">#{{ task.pk }} {{ task.title }}</p>
+                {% if task.claimed_by %}
+                  <p class="is-size-7 has-text-grey">{{ task.claimed_by.user }}{% if task.agent %} · {{ task.agent }}{% endif %}</p>
+                {% endif %}
+                {% if task.note %}<p class="is-size-7 mt-1">{{ task.note }}</p>{% endif %}
+                <form class="mt-2" hx-post="{% url 'projects:task_status' project.pk task.pk %}" hx-target="#live" hx-trigger="change">
+                  <div class="select is-small">
+                    <select name="status" aria-label="Status of task {{ task.pk }}">
+                      {% for v, l in status_choices %}<option value="{{ v }}"{% if v == task.status %} selected{% endif %}>{{ l }}</option>{% endfor %}
+                    </select>
+                  </div>
+                </form>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="column is-4">
+    <h2 class="title is-6">Team</h2>
+    <div class="tags">
+      {% for m in members %}
+        <span class="tag {% if m.last_seen_at %}is-success is-light{% endif %}" title="{% if m.last_seen_at %}agent last active {{ m.last_seen_at|timesince }} ago{% else %}no agent connected yet{% endif %}">{{ m.user }}</span>
+      {% endfor %}
+    </div>
+    <h2 class="title is-6 mt-4">Messages</h2>
+    <div class="chat">
+      {% for msg in chat %}
+        <article class="message is-small {% if msg.recipient %}is-warning{% elif msg.agent %}is-info{% else %}is-dark{% endif %} mb-2">
+          <div class="message-body p-2">
+            <p class="is-size-7 has-text-grey">
+              {{ msg.sender.user|default:"?" }}{% if msg.agent %} · {{ msg.agent }}{% endif %}
+              {% if msg.recipient %} → {{ msg.recipient.user }}{% endif %} · {{ msg.created_at|timesince }} ago
+            </p>
+            <p>{{ msg.body|linebreaksbr }}</p>
+          </div>
+        </article>
+      {% empty %}
+        <p class="has-text-grey">No messages yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>

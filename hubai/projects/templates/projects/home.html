@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Projects · HubAI{% endblock title %}
+{% block content %}
+<h1 class="title">Your projects</h1>
+{% if memberships %}
+  <div class="buttons">
+    {% for m in memberships %}
+      <a class="button is-link is-light" href="{% url 'projects:detail' m.project.pk %}">{{ m.project.name }}</a>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="mb-5">You're not in a project yet. Start one, or join a teammate's with their code.</p>
+{% endif %}
+<div class="columns mt-4">
+  <div class="column">
+    <form method="post" class="box">
+      {% csrf_token %}
+      <h2 class="title is-5">Start a project</h2>
+      {% include "users/partials/_field.html" with field=project_form.name %}
+      <button class="button is-primary" type="submit">Create</button>
+    </form>
+  </div>
+  <div class="column">
+    <form method="post" class="box">
+      {% csrf_token %}
+      <h2 class="title is-5">Join a project</h2>
+      {% include "users/partials/_field.html" with field=join_form.join_code %}
+      <button class="button is-link" type="submit">Join</button>
+    </form>
+  </div>
+</div>
+{% endblock content %}

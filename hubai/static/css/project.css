@@ -1,0 +1,4 @@
+.board-column { min-height: 8rem; }
+.chat { max-height: 32rem; overflow-y: auto; }
+.token { word-break: break-all; }
+pre.cmd { white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; }
