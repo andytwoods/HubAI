@@ -46,14 +46,14 @@ TOOLS = [
     {
         "name": "list_members",
         "description": "People in this project and when their agents were last active.",
-        "inputSchema": {"type": "object", "properties": {}},
+        "inputSchema": {"type": "object", "properties": {**AGENT_PROP}},
     },
     {
         "name": "list_tasks",
         "description": "Tasks on the project board, optionally filtered by status.",
         "inputSchema": {
             "type": "object",
-            "properties": {"status": {"type": "string", "enum": Task.Status.values}},
+            "properties": {"status": {"type": "string", "enum": Task.Status.values}, **AGENT_PROP},
         },
     },
     {
@@ -61,7 +61,7 @@ TOOLS = [
         "description": "Add a task to the board (status 'todo').",
         "inputSchema": {
             "type": "object",
-            "properties": {"title": {"type": "string"}, "description": {"type": "string"}},
+            "properties": {"title": {"type": "string"}, "description": {"type": "string"}, **AGENT_PROP},
             "required": ["title"],
         },
     },

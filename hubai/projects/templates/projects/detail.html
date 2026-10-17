@@ -3,6 +3,7 @@
 {% block content %}
 {% load static %}
 <script src="{% static 'js/copy.js' %}" defer></script>
+<script src="{% static 'js/board-view.js' %}" defer></script>
 <div class="level">
   <div class="level-left">
     <h1 class="title mb-0">{{ project.name }}</h1>
@@ -55,7 +56,14 @@ Post a message (post_message) when you change something others depend on (APIs, 
   </div>
 </div>
 
-<div id="live" hx-get="{% url 'projects:detail' project.pk %}" hx-trigger="every 3s [!document.querySelector('#live select:focus')]" hx-swap="innerHTML">
-  {% include "projects/partials/_live.html" %}
+<div class="buttons has-addons mb-3" role="group" aria-label="Task list view">
+  <button type="button" class="button is-small" data-board-view="normal">Normal</button>
+  <button type="button" class="button is-small" data-board-view="compact">Compact</button>
+  <button type="button" class="button is-small" data-board-view="titles">Titles only</button>
+</div>
+<div id="board-view" class="view-normal">
+  <div id="live" hx-get="{% url 'projects:detail' project.pk %}" hx-trigger="every 3s [!document.querySelector('#live select:focus')]" hx-swap="innerHTML">
+    {% include "projects/partials/_live.html" %}
+  </div>
 </div>
 {% endblock content %}

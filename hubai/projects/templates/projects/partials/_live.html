@@ -6,13 +6,13 @@
           <h2 class="title is-6">{{ label }} <span class="tag is-rounded">{{ tasks|length }}</span></h2>
           <div class="board-column">
             {% for task in tasks %}
-              <div class="box p-3 mb-2">
-                <p class="has-text-weight-semibold">#{{ task.pk }} {{ task.title }}</p>
+              <div class="box p-3 mb-2 task-card" title="#{{ task.pk }} {{ task.title }}{% if task.note %} — {{ task.note }}{% endif %}">
+                <p class="has-text-weight-semibold task-title">#{{ task.pk }} {{ task.title }}</p>
                 {% if task.claimed_by %}
-                  <p class="is-size-7 has-text-grey">{{ task.claimed_by.user }}{% if task.agent %} · {{ task.agent }}{% endif %}</p>
+                  <p class="is-size-7 has-text-grey task-meta">{{ task.claimed_by.user }}{% if task.agent %} · {{ task.agent }}{% endif %}</p>
                 {% endif %}
-                {% if task.note %}<p class="is-size-7 mt-1">{{ task.note }}</p>{% endif %}
-                <form class="mt-2" hx-post="{% url 'projects:task_status' project.pk task.pk %}" hx-target="#live" hx-trigger="change">
+                {% if task.note %}<p class="is-size-7 mt-1 task-note">{{ task.note }}</p>{% endif %}
+                <form class="mt-2 task-status" hx-post="{% url 'projects:task_status' project.pk task.pk %}" hx-target="#live" hx-trigger="change">
                   <div class="select is-small">
                     <select name="status" aria-label="Status of task {{ task.pk }}">
                       {% for v, l in status_choices %}<option value="{{ v }}"{% if v == task.status %} selected{% endif %}>{{ l }}</option>{% endfor %}
