@@ -13,7 +13,7 @@ INDIGO, YELLOW, INK, BG, RED = (72, 95, 199), (255, 221, 87), (30, 42, 90), (236
 SCENES = [(0, 4.2, "My MacBook: 8 AI agents, 8 test runs. On fire."),
           (4.2, 8.0, "Meanwhile, my PCs at work and at home..."),
           (8.0, 12.6, "HubAI: the Mac hands out tasks, the PCs do the work."),
-          (12.6, 15.2, "Next week: the fridge. What could possibly go wrong?"),
+          (12.6, 15.2, "Claude Max x20 on every machine, all working as one."),
           (15.2, 18.2, "Spread your AI agents across every computer you own.")]
 CMD = 'claude mcp add --transport http hubai https://hubai.applikuapp.com/mcp/ --header "Authorization: Bearer ••••"'
 _fonts = {}
@@ -143,62 +143,81 @@ def scene3(t):
         d.text((W - 60, 94), "Work PC: claimed #4", font=f(B, 22), fill=(40, 150, 80), anchor="ra")
     return im, d
 
-def scene_fridge(t):
-    im = Image.new("RGB", (W, H), (240, 242, 252)); d = ImageDraw.Draw(im)
-    # Fridge
-    fx, fy = 280, 560
-    d.rounded_rectangle([fx - 120, fy - 420, fx + 120, fy], radius=20, fill="white", outline=(170, 176, 210), width=4)
-    d.line([fx - 120, fy - 290, fx + 120, fy - 290], fill=(170, 176, 210), width=4)
-    d.rounded_rectangle([fx + 80, fy - 400, fx + 92, fy - 320], radius=5, fill=(170, 176, 210))
-    face_on(d, fx, fy - 370, 30, "happy" if t > 0.5 else "sleep")
-    d.text((fx, fy + 14), "Fridge", font=f(B, 22), fill=INK, anchor="ma")
-    # Toaster
-    tx, ty = 700, 560
-    d.rounded_rectangle([tx - 150, ty - 180, tx + 150, ty], radius=40, fill=(200, 205, 222), outline=(130, 136, 170), width=4)
-    face_on(d, tx, ty - 95, 28, "happy" if t > 0.3 else "sleep")
-    pop = ease((t - 0.9) / 0.35)
-    toast_y = ty - 180 - 150 * pop
-    d.rounded_rectangle([tx - 85, toast_y - 40, tx + 85, toast_y + 60], radius=22, fill=(222, 170, 100), outline=(170, 110, 50), width=3)
-    if pop > 0.6:
-        d.text((tx, toast_y + 8), "task #9 done", font=f(B, 20), fill=(90, 50, 20), anchor="mm")
-    d.text((tx, ty + 14), "Toaster", font=f(B, 22), fill=INK, anchor="ma")
-    if t > 1.4:
-        d.text((W - 60, 60), "Fridge: claimed #10", font=f(B, 22), fill=(40, 150, 80), anchor="ra")
+def badge(d, cx, cy, text, on):
+    fo = f(B, 18); w = d.textlength(text, font=fo) + 28
+    d.rounded_rectangle([cx - w/2, cy - 17, cx + w/2, cy + 17], radius=17,
+                        fill=(217, 119, 87) if on else (200, 204, 222))
+    d.text((cx, cy), text, font=fo, fill="white", anchor="mm")
+
+def scene_fridge(t):  # now: every machine on Claude Max x20, joined into one team
+    im = Image.new("RGB", (W, H), BG); d = ImageDraw.Draw(im)
+    hub = (470, 165)
+    machines = [("laptop", 120, 470, "MacBook"), ("tower", 330, 540, "Work PC"),
+                ("tower", 600, 540, "Home PC"), ("laptop", 820, 470, "Laptop")]
+    for i, (_, x, y, _) in enumerate(machines):
+        on = t > 0.25 * i
+        if t > 0.9 + 0.15 * i:
+            d.line([hub, (x, y - 170)], fill=(217, 119, 87), width=6)
+            ph = ((t - 0.9) * 0.9 + i * 0.25) % 1  # spark travelling to the hub
+            sx, sy = x + (hub[0] - x) * ph, (y - 170) + (hub[1] - (y - 170)) * ph
+            d.ellipse([sx - 8, sy - 8, sx + 8, sy + 8], fill=YELLOW)
+    joined = ease((t - 1.5) / 0.6)
+    r = 58 + 14 * joined
+    d.ellipse([hub[0] - r, hub[1] - r, hub[0] + r, hub[1] + r], fill=YELLOW, outline=INDIGO, width=5)
+    d.text(hub, "HubAI", font=f(B, 24), fill=INK, anchor="mm")
+    for i, (kind, x, y, label) in enumerate(machines):
+        if kind == "laptop":
+            laptop(d, x, y, 170, "happy" if t > 0.25 * i else "sleep", label)
+        else:
+            tower(d, x, y, 110, "happy" if t > 0.25 * i else "sleep", label)
+        badge(d, x, y - 150 if kind == "laptop" else y - 175, "Claude Max x20", t > 0.25 * i)
+    if joined > 0.5:
+        d.text((hub[0] + 95, hub[1] - 14), "one team", font=f(B, 30), fill=(217, 119, 87))
     return im, d
 
+
+def terminator(d, cx, cy, s):
+    """Steel skull-bot with glowing red eyes and gritted teeth."""
+    d.rounded_rectangle([cx - s, cy - s * 1.05, cx + s, cy + s * 0.75], radius=s * 0.45, fill=(120, 126, 140), outline=(40, 42, 50), width=max(2, int(s * 0.08)))
+    d.rectangle([cx - s * 0.85, cy - s * 0.35, cx + s * 0.85, cy + s * 0.02], fill=(25, 25, 32))  # visor band
+    for ex in (-0.42, 0.42):
+        g = s * 0.34
+        d.ellipse([cx + ex * s - g, cy - s * 0.17 - g, cx + ex * s + g, cy - s * 0.17 + g], fill=(120, 0, 0))
+        g = s * 0.17
+        d.ellipse([cx + ex * s - g, cy - s * 0.17 - g, cx + ex * s + g, cy - s * 0.17 + g], fill=(255, 40, 30))
+    d.rectangle([cx - s * 0.55, cy + s * 0.25, cx + s * 0.55, cy + s * 0.55], fill=(30, 30, 36))
+    for k in range(6):  # teeth
+        tx = cx - s * 0.55 + k * s * 0.22
+        d.line([tx, cy + s * 0.25, tx, cy + s * 0.55], fill=(170, 175, 185), width=max(1, int(s * 0.06)))
+    d.line([cx - s * 0.6, cy - s * 0.7, cx - s * 0.2, cy - s * 0.5], fill=(60, 62, 70), width=max(1, int(s * 0.07)))
+
 def scene4(t, icon):
-    """The robot army: rows of robots and robot-faced devices marching behind the logo."""
-    im = Image.new("RGB", (W, H), (226, 230, 248)); d = ImageDraw.Draw(im)
-    rows = [(150, 0.45, 22, 0.55), (250, 0.6, 30, 0.7), (370, 0.8, 42, 0.85), (520, 1.0, 58, 1.0)]
-    kinds = ["robot", "laptop", "robot", "tower", "robot", "toaster"]
-    for r, (y, scale, size, alpha) in enumerate(rows):
-        step = size * 3.2
-        offset = (t * 60 * scale) % step
-        for k in range(-1, int(W / step) + 2):
-            x = k * step + offset + (r % 2) * step / 2
-            bob = abs(math.sin(t * 7 + k + r)) * 8 * scale
-            kind = kinds[(k + r) % len(kinds)]
-            layer = Image.new("RGBA", (W, H), (0, 0, 0, 0)); ld = ImageDraw.Draw(layer)
-            if kind == "robot":
-                robot(ld, x, y - bob, size * 0.7, "angry" if (k + r) % 4 == 0 else "happy")
-            elif kind == "laptop":
-                laptop(ld, x, y - bob + size * 0.4, size * 1.6, "happy")
-            elif kind == "tower":
-                tower(ld, x, y - bob + size * 0.8, max(size * 1.1, 40), "happy")
-            else:
-                ld.rounded_rectangle([x - size, y - bob - size * 0.5, x + size, y - bob + size * 0.6], radius=size * 0.3, fill=(200, 205, 222))
-                face_on(ld, x, y - bob, size * 0.25, "happy")
-            if alpha < 1:
-                a_ = layer.getchannel("A").point(lambda v, al=alpha: int(v * al)); layer.putalpha(a_)
-            im.paste(layer, (0, 0), layer)
-    d = ImageDraw.Draw(im)
-    pop = ease(t / 0.5)
-    if pop > 0.1:
-        d.rounded_rectangle([W/2 - 300, 40, W/2 + 300, 40 + 330 * pop], radius=min(24, 330 * pop / 2 - 1), fill="white")
-    if pop > 0.9:
-        ic = icon.resize((120, 120)); im.paste(ic, (int(W/2 - 60), 60), ic)
-        d.text((W/2, 190), "HubAI", font=f(B, 76), fill=INK, anchor="ma")
-        d.text((W/2, 290), "hubai.applikuapp.com", font=f(B, 36), fill=INDIGO, anchor="ma")
+    """Self-replicating robot army: one bot doubles every 0.25 s until the screen is full."""
+    im = Image.new("RGB", (W, H), (22, 8, 10)); d = ImageDraw.Draw(im)
+    for k in range(12):  # dark red glow from the bottom
+        c = (60 - k * 4, 10, 12)
+        d.ellipse([W/2 - 900 + k * 60, H - 200 - k * 30, W/2 + 900 - k * 60, H + 600], fill=c)
+    slots = []
+    for row, (y, size) in enumerate([(430, 34), (330, 27), (530, 42), (250, 21), (620, 50)]):
+        step = size * 2.8
+        for k in range(int(W / step) + 2):
+            x = (k + 0.5 * (row % 2)) * step
+            slots.append((abs(x - W/2) + abs(y - 430) * 1.5, x, y, size))
+    slots.sort()
+    count = min(len(slots), int(2 ** (t * 4)))
+    for n, (_, x, y, size) in enumerate(slots[:count]):
+        born = math.log2(n + 1) / 4  # when this one appeared
+        grow = ease((t - born) / 0.18)
+        if size * grow > 8:
+            terminator(d, x, y + math.sin(t * 9 + n) * 3, size * grow)
+    if t > 1.1:
+        pop = ease((t - 1.1) / 0.4)
+        if pop > 0.1:
+            d.rounded_rectangle([W/2 - 300, 40, W/2 + 300, 40 + 300 * pop], radius=min(24, 150 * pop - 1), fill="white")
+        if pop > 0.9:
+            ic = icon.resize((110, 110)); im.paste(ic, (int(W/2 - 55), 55), ic)
+            d.text((W/2, 172), "HubAI", font=f(B, 72), fill=INK, anchor="ma")
+            d.text((W/2, 262), "hubai.applikuapp.com", font=f(B, 34), fill=INDIGO, anchor="ma")
     return im, d
 
 
