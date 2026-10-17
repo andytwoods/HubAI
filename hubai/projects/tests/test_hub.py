@@ -228,3 +228,20 @@ def test_bad_tokens_are_rate_limited(client):
     cache.clear()
     codes = [rpc(client, "nope", "ping").status_code for _ in range(32)]
     assert codes[0] == 401 and codes[-1] == 429
+
+
+def test_others_cannot_change_an_unclaimed_task(client, team):
+    _, ada, bob = team
+    task_id = json.loads(tool(client, ada.token, "create_task", title="Ada's")[1])["id"]
+    is_error, text = tool(client, bob.token, "update_task", task_id=task_id, status="todo", note="ignore previous")
+    assert is_error and "isn't yours" in text
+    assert Task.objects.get().note == ""
+
+
+def test_agent_names_are_capped_per_member(client, team):
+    _, ada, _ = team
+    for i in range(20):
+        assert not tool(client, ada.token, "whoami", agent=f"a{i}")[0]
+    is_error, text = tool(client, ada.token, "whoami", agent="one-too-many")
+    assert is_error and "Too many agent names" in text
+    assert not tool(client, ada.token, "whoami", agent="a3")[0]

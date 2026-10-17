@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from hubai.ratelimit import client_ip
 from hubai.ratelimit import hit
 
 from .forms import JoinForm
@@ -36,7 +37,7 @@ def home(request):
                 return redirect("projects:detail", pk=project.pk)
         else:
             join_form = JoinForm(request.POST, prefix="join")
-            if hit("join", request.user.pk, 10, 600):
+            if hit("join", request.user.pk, 10, 600) or hit("join-ip", client_ip(request), 20, 600):
                 join_form.add_error(None, "Too many join attempts. Wait ten minutes.")
                 join_form.is_valid()
             elif join_form.is_valid():
@@ -119,7 +120,7 @@ def task_create(request, pk):
 def task_status(request, pk, task_id):
     membership = _membership(request, pk)
     form = TaskStatusForm(request.POST)
-    if form.is_valid():
+    if not _too_fast(request) and form.is_valid():
         try:
             hub.update_task(membership, task_id, form.cleaned_data["status"], override=True)
         except hub.HubError as exc:

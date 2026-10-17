@@ -20,6 +20,8 @@ BROADCAST_NAMES = {"", "everyone", "all", "team"}
 DEFAULT_AGENT = "agent"
 MAX_BODY = 4000
 INBOX_LIMIT = 50
+MAX_AGENTS_PER_MEMBER = 20
+MAX_TASKS_PER_PROJECT = 500
 
 
 class HubError(Exception):
@@ -45,6 +47,15 @@ def join_project(user, join_code):
         raise HubError("No project has that join code.") from None
     Membership.objects.get_or_create(project=project, user=user)
     return project
+
+
+def agent_name(membership, agent):
+    """Normalise an agent name, refusing new names past the per-member cap (stops row flooding)."""
+    agent = (agent or "").strip()[:60] or DEFAULT_AGENT
+    known = AgentPresence.objects.filter(membership=membership)
+    if not known.filter(agent=agent).exists() and known.count() >= MAX_AGENTS_PER_MEMBER:
+        raise HubError(f"Too many agent names (max {MAX_AGENTS_PER_MEMBER}). Reuse an existing one.")
+    return agent
 
 
 def touch(membership, agent="", tool=""):
@@ -92,6 +103,8 @@ def create_task(membership, title, description=""):
     title = title.strip()
     if not title:
         raise HubError("A task needs a title.")
+    if membership.project.tasks.count() >= MAX_TASKS_PER_PROJECT:
+        raise HubError(f"This project has {MAX_TASKS_PER_PROJECT} tasks, the maximum.")
     return Task.objects.create(
         project=membership.project, title=title[:200], description=description[:MAX_BODY], created_by=membership
     )
@@ -141,6 +154,8 @@ def update_task(membership, task_id, status, note=None, agent="", override=False
                 raise HubError(f"Task #{task.pk} is held{_holder(task)}. Ask them with post_message.")
             if task.claimed_by_id is None and status == Task.Status.DOING:
                 raise HubError(f"Use claim_task to start task #{task.pk}.")
+            if task.claimed_by_id is None and task.created_by_id != membership.pk:
+                raise HubError(f"Task #{task.pk} isn't yours. Claim it first, or ask its creator.")
         status_changed = task.status != status
         task.status = status
         if status == Task.Status.TODO:

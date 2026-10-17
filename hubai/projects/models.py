@@ -10,8 +10,8 @@ JOIN_WORDS = [
 
 
 def generate_join_code():
-    first, second = secrets.choice(JOIN_WORDS), secrets.choice(JOIN_WORDS)
-    return f"{first.upper()}-{second.upper()}-{secrets.randbelow(9000) + 1000}"
+    words = "-".join(secrets.choice(JOIN_WORDS).upper() for _ in range(3))
+    return f"{words}-{secrets.randbelow(9000) + 1000}"
 
 
 def generate_token():

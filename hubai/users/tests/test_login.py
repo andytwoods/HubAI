@@ -50,3 +50,10 @@ def test_pages_have_icons_and_link_preview(client):
     text = client.get(reverse("users:login")).text
     assert 'rel="icon"' in text and 'property="og:image" content="http://testserver/static/img/og.png"' in text
     assert client.get("/favicon.ico").status_code == 301
+
+
+def test_staff_accounts_cannot_use_event_code_login(client):
+    get_user_model().objects.create_superuser(email="admin@example.com", password="x")
+    response = client.post(reverse("users:login"), {"email": "admin@example.com", "event_code": "test-event"})
+    assert response.status_code == 422
+    assert "_auth_user_id" not in client.session

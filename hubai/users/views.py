@@ -30,6 +30,9 @@ def login_view(request):
             return render(request, "users/login.html", {"form": form, "rate_limited": True}, status=429)
     if request.method == "POST" and form.is_valid():
         user, created = get_user_model().objects.get_or_create(email=form.cleaned_data["email"])
+        if user.is_staff or user.is_superuser or not user.is_active:
+            form.add_error("email", "This account can't sign in here.")
+            return render(request, "users/login.html", {"form": form}, status=422)
         if created:
             user.set_unusable_password()
         if form.cleaned_data["name"]:

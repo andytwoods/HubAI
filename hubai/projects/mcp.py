@@ -132,7 +132,7 @@ def _int(args, key):
 
 
 def call_tool(membership, name, args):
-    agent = _str(args, "agent")
+    agent = _str(args, "agent")  # already normalised by agent_name()
     match name:
         case "whoami":
             return {
@@ -253,8 +253,11 @@ def mcp_endpoint(request):
             args = params.get("arguments") or {}
             if not isinstance(args, dict):
                 return rpc_error(msg_id, -32602, "'arguments' must be an object")
-            agent = args.get("agent") if isinstance(args.get("agent"), str) else ""
-            hub.touch(membership, agent, name if isinstance(name, str) else "")
+            try:
+                args["agent"] = hub.agent_name(membership, args.get("agent") if isinstance(args.get("agent"), str) else "")
+            except hub.HubError as exc:
+                return rpc_result(msg_id, {"content": [{"type": "text", "text": str(exc)}], "isError": True})
+            hub.touch(membership, args["agent"], name if isinstance(name, str) else "")
             try:
                 result = call_tool(membership, name, args)
             except KeyError as exc:
