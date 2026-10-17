@@ -54,25 +54,35 @@
       <p class="is-size-7 has-text-grey">No agent has called a tool yet. Connect one from "Connect your AI agent" above.</p>
     {% endfor %}
     <p class="is-size-7 has-text-grey mt-1">Active = used a tool in the last 10 minutes.</p>
-    <h2 class="title is-6 mt-4">Messages</h2>
-    <div class="chat">
-      {% for msg in chat %}
-        {% if msg.is_event %}
-          <p class="is-size-7 has-text-grey mb-2" id="msg-{{ msg.id }}">⚑ {{ msg.body }} · {{ msg.created_at|timesince }} ago</p>
-        {% else %}
-        <article id="msg-{{ msg.id }}" class="message is-small {% if msg.recipient %}is-warning{% elif msg.agent %}is-info{% else %}is-dark{% endif %} mb-2">
-          <div class="message-body p-2">
-            <p class="is-size-7 has-text-grey">
-              {{ msg.sender.user|default:"?" }}{% if msg.agent %} · {{ msg.agent }}{% endif %}
-              {% if msg.recipient %} → {{ msg.recipient.user }}{% endif %} · {{ msg.created_at|timesince }} ago
-            </p>
-            <p>{{ msg.body|linebreaksbr }}</p>
-          </div>
-        </article>
-        {% endif %}
-      {% empty %}
-        <p class="has-text-grey">No messages yet.</p>
-      {% endfor %}
+    <div class="panel-messages mt-4" id="column-messages" data-column="messages">
+      <div class="column-head">
+        <h2 class="title is-6 mb-0 column-label">Messages <span class="tag is-rounded">{{ chat|length }}</span></h2>
+        <div class="column-tools" role="group" aria-label="Messages view">
+          <button type="button" class="button is-small is-white" data-col-view="normal" title="Full messages" aria-label="Full messages">▣</button>
+          <button type="button" class="button is-small is-white" data-col-view="compact" title="Compact" aria-label="Compact">▤</button>
+          <button type="button" class="button is-small is-white" data-col-view="titles" title="One line each" aria-label="One line each">≡</button>
+          <button type="button" class="button is-small is-white" data-col-collapse title="Minimise messages" aria-label="Minimise messages">«</button>
+        </div>
+      </div>
+      <div class="chat board-column">
+        {% for msg in chat %}
+          {% if msg.is_event %}
+            <p class="is-size-7 has-text-grey mb-2 msg-event" id="msg-{{ msg.id }}">⚑ {{ msg.body }} · {{ msg.created_at|timesince }} ago</p>
+          {% else %}
+          <article id="msg-{{ msg.id }}" class="message is-small {% if msg.recipient %}is-warning{% elif msg.agent %}is-info{% else %}is-dark{% endif %} mb-2">
+            <div class="message-body p-2">
+              <p class="is-size-7 has-text-grey msg-meta">
+                {{ msg.sender.user|default:"?" }}{% if msg.agent %} · {{ msg.agent }}{% endif %}
+                {% if msg.recipient %} → {{ msg.recipient.user }}{% endif %} · {{ msg.created_at|timesince }} ago
+              </p>
+              <p class="msg-body">{{ msg.body|linebreaksbr }}</p>
+            </div>
+          </article>
+          {% endif %}
+        {% empty %}
+          <p class="has-text-grey">No messages yet.</p>
+        {% endfor %}
+      </div>
     </div>
   </div>
 </div>

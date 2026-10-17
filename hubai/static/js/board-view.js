@@ -1,4 +1,5 @@
-// Per-column views (full / compact / titles only) and minimised columns, remembered per browser.
+// Per-panel views (full / compact / titles only) and minimised panels, for the task columns and the
+// messages panel, remembered per browser.
 // Classes are reapplied right after every HTMX swap of #live (before the browser paints), since the swap
 // brings the server's plain markup back.
 // The "all columns" buttons above the board set every column at once.
@@ -20,7 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const c = col(column.dataset.column);
       column.classList.toggle("is-collapsed", c.collapsed);
       const cards = column.querySelector(".board-column");
-      cards.className = `board-column view-${c.view}`;
+      cards.classList.remove("view-normal", "view-compact", "view-titles");
+      cards.classList.add(`view-${c.view}`);
       column.querySelectorAll("[data-col-view]").forEach((b) => {
         const on = b.dataset.colView === c.view;
         b.classList.toggle("is-link", on);

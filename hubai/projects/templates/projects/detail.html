@@ -93,13 +93,13 @@ uv run hubai_worker.py --repo ~/path/to/your-repo --agent "$(hostname -s)-worker
 </div>
 
 <div class="is-flex is-align-items-center mb-3">
-  <span class="is-size-7 has-text-grey mr-2">All columns:</span>
-  <div class="buttons has-addons mb-0" role="group" aria-label="View for every column">
+  <span class="is-size-7 has-text-grey mr-2">All panels:</span>
+  <div class="buttons has-addons mb-0" role="group" aria-label="View for every panel">
     <button type="button" class="button is-small" data-board-view="normal">Full</button>
     <button type="button" class="button is-small" data-board-view="compact">Compact</button>
     <button type="button" class="button is-small" data-board-view="titles">Titles only</button>
   </div>
-  <span class="is-size-7 has-text-grey ml-3">Each column has its own view buttons and a « to minimise it. Click a task's title to read or edit it.</span>
+  <span class="is-size-7 has-text-grey ml-3">Each task column and the messages panel has its own view buttons and a « to minimise it. Click a task's title to read or edit it.</span>
 </div>
 <div id="modal"></div>
 <div id="board-view" data-reorder-url="{% url 'projects:task_reorder' project.pk %}">
