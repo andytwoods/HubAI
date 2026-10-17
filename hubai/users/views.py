@@ -1,12 +1,15 @@
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth import login
 from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.shortcuts import render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .forms import EventLoginForm
+from .helpers import delete_user_data
 
 
 def login_view(request):
@@ -31,6 +34,23 @@ def login_view(request):
             return redirect(next_url)
         return redirect("projects:home")
     return render(request, "users/login.html", {"form": form}, status=422 if form.errors else 200)
+
+
+@login_required
+@require_POST
+def delete_account(request):
+    delete_user_data(request.user)
+    logout(request)
+    messages.success(request, "Your account, memberships and messages have been deleted.")
+    return redirect("users:login")
+
+
+def privacy(request):
+    return render(request, "users/privacy.html")
+
+
+def terms(request):
+    return render(request, "users/terms.html")
 
 
 @require_POST

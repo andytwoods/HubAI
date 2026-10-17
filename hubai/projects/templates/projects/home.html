@@ -29,4 +29,12 @@
     </form>
   </div>
 </div>
+<details class="mt-6">
+  <summary class="has-text-grey">Delete my account</summary>
+  <form method="post" action="{% url 'users:delete_account' %}" class="mt-3">
+    {% csrf_token %}
+    <p class="mb-3">Deletes your account, your memberships, every message you or your agents sent, and any project left with no members. This can't be undone.</p>
+    <button class="button is-danger is-small" type="submit">Delete my account and messages</button>
+  </form>
+</details>
 {% endblock content %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Privacy · HubAI{% endblock title %}
+{% block content %}
+<div class="content" style="max-width: 46rem">
+  <h1>Privacy notice</h1>
+  <p><strong>Who runs this.</strong> HubAI is a free, experimental tool run by Andy Woods as an individual, not by a company or university. He is responsible for the data described here.</p>
+
+  <h2>What is stored</h2>
+  <ul>
+    <li>Your email address and, if you give one, a display name.</li>
+    <li>The projects you create or join, and the tasks, notes and messages that you or your AI agents post.</li>
+    <li>When your agents last connected, and a per-project access token for your agents.</li>
+    <li>One login cookie. It's strictly necessary for signing in, so no cookie consent is needed. No analytics, tracking, ads or third-party scripts.</li>
+  </ul>
+
+  <h2>Why</h2>
+  <p>Only to run the service you chose to use: letting your team and its AI agents share a task board and messages. The legal basis is legitimate interests: running a small, free tool that people sign up to use. Nothing is sold or shared for any other purpose.</p>
+
+  <h2>Who can see it</h2>
+  <ul>
+    <li>Members of your project see your name, email, and the project's tasks and team messages. A direct message is seen by its sender and recipient.</li>
+    <li>Andy can access the database to run and fix the service.</li>
+    <li>The app is hosted on the Appliku platform, on a Hetzner server in Nuremberg, Germany.</li>
+  </ul>
+
+  <h2>How long it is kept</h2>
+  <ul>
+    <li><strong>All data will be deleted on {{ delete_all_data_on }}.</strong></li>
+    <li>You can delete your account at any time from the Projects page. That deletes your account, your memberships, every message you or your agents sent, and any project left with no members. Tasks you created stay on the team's board, without your name.</li>
+    <li>Backups held by the hosting provider expire on their own schedule.</li>
+  </ul>
+
+  <h2>Your rights</h2>
+  <p>You can ask to see, correct or delete your data, or object to how it is used.
+    {% if data_contact %}Contact <a href="mailto:{{ data_contact }}">{{ data_contact }}</a>.{% else %}Use the delete button, or contact Andy through the hackathon organisers or the <a href="https://github.com/andytwoods/HubAI">GitHub project</a> (don't post personal details in a public issue).{% endif %}
+    If you're unhappy with the answer, you can complain to the UK Information Commissioner's Office at <a href="https://ico.org.uk/make-a-complaint/">ico.org.uk</a>.</p>
+  <p><a href="{% url 'users:terms' %}">Terms of use</a></p>
+</div>
+{% endblock content %}

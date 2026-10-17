@@ -42,6 +42,9 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 30
 
 # The shared code organisers hand out; anyone holding it can create an account.
 EVENT_CODE = env("HUBAI_EVENT_CODE", default="hack")
+# Shown in the privacy notice: when all data is wiped, and an optional contact for data requests.
+DELETE_ALL_DATA_ON = env("HUBAI_DELETE_ALL_DATA_ON", default="31 October 2026")
+DATA_CONTACT = env("HUBAI_DATA_CONTACT", default="")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -68,6 +71,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "hubai.users.context_processors.legal",
             ],
         },
     },

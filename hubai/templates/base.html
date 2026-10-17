@@ -23,7 +23,7 @@
     {% endif %}
   </nav>
   <div class="notification is-warning is-light has-text-centered mb-0 py-3" role="note">
-    <strong>Experimental prototype.</strong> Login isn't secure: don't paste secrets, keys or private code.
+    <strong>Experimental prototype.</strong> Login isn't secure: don't paste secrets, keys or private code, and tell your agents the same.
   </div>
   <main class="section">
     <div class="container">
@@ -40,6 +40,7 @@
         <a href="https://scholar.google.co.uk/citations?user=p5dUkQIAAAAJ&amp;hl=en" rel="noopener" target="_blank">Google Scholar</a> ·
         <a href="https://andytwoods.github.io/django-for-behavioural-science/" rel="noopener" target="_blank">Django for Behavioural Science (tutorial)</a> ·
         <a href="https://github.com/andytwoods/HubAI" rel="noopener" target="_blank">Source on GitHub</a> (MIT)
+        <br><a href="{% url 'users:privacy' %}">Privacy</a> · <a href="{% url 'users:terms' %}">Terms</a> · All data deleted on {{ delete_all_data_on }}
       </p>
     </div>
   </footer>
