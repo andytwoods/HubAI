@@ -20,6 +20,12 @@ class MessageForm(forms.Form):
     body = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}))
 
 
+class TaskEditForm(forms.Form):
+    title = forms.CharField(max_length=200)
+    description = forms.CharField(required=False, max_length=4000)
+    note = forms.CharField(required=False, max_length=4000)
+
+
 class TaskStatusForm(forms.Form):
     status = forms.ChoiceField(choices=Task.Status.choices)
 

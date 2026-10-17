@@ -195,6 +195,20 @@ def update_task(membership, task_id, status, note=None, agent="", override=False
     return task
 
 
+def edit_task(membership, task_id, title, description, note):
+    """A person rewrites a task's text on the dashboard. Agents hear about it only if the brief changed."""
+    title = title.strip()
+    if not title:
+        raise HubError("A task needs a title.")
+    task = get_task(membership.project, task_id)
+    brief_changed = (task.title, task.description) != (title[:200], description[:MAX_BODY])
+    task.title, task.description, task.note = title[:200], description[:MAX_BODY], note[:MAX_BODY]
+    task.save()
+    if brief_changed:
+        _announce(membership, "", f"{_actor(membership, '')} edited #{task.pk} {task.title}")
+    return task
+
+
 def _fail(task, reason):
     """Put a failed task back in To do for another try, or in Blocked once it has used up its attempts."""
     retry = task.attempts < MAX_ATTEMPTS

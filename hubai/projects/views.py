@@ -17,6 +17,7 @@ from hubai.users.forms import EventLoginForm
 from .forms import JoinForm
 from .forms import MessageForm
 from .forms import ProjectForm
+from .forms import TaskEditForm
 from .forms import TaskForm
 from .forms import TaskReorderForm
 from .forms import TaskStatusForm
@@ -131,6 +132,31 @@ def task_status(request, pk, task_id):
             hub.update_task(membership, task_id, form.cleaned_data["status"], override=True)
         except hub.HubError as exc:
             messages.error(request, str(exc))
+    return _respond(request, membership)
+
+
+@login_required
+def task_detail(request, pk, task_id):
+    """The task modal: full title, description and note, editable."""
+    membership = _membership(request, pk)
+    task = get_object_or_404(membership.project.tasks.select_related("created_by__user", "claimed_by__user"), pk=task_id)
+    return render(request, "projects/partials/_task_modal.html", {"project": membership.project, "task": task})
+
+
+@login_required
+@require_POST
+def task_edit(request, pk, task_id):
+    membership = _membership(request, pk)
+    form = TaskEditForm(request.POST)
+    if _too_fast(request):
+        pass
+    elif form.is_valid():
+        try:
+            hub.edit_task(membership, task_id, **form.cleaned_data)
+        except hub.HubError as exc:
+            messages.error(request, str(exc))
+    else:
+        messages.error(request, "A task needs a title.")
     return _respond(request, membership)
 
 

@@ -354,3 +354,36 @@ def test_reorder_rejects_tasks_from_other_projects(client, team):
     foreign.refresh_from_db()
     mine.refresh_from_db()
     assert foreign.status == "todo" and mine.status == "todo"
+
+
+def test_task_modal_shows_full_text_and_saves_edits(client, team):
+    project, ada, bob = team
+    task = hub.create_task(ada, "Ship it", "Long brief " * 50)
+    client.force_login(bob.user)
+    page = client.get(reverse("projects:task_detail", args=[project.pk, task.pk])).text
+    assert "Long brief " * 50 in page and 'value="Ship it"' in page
+    client.post(
+        reverse("projects:task_edit", args=[project.pk, task.pk]),
+        {"title": "Ship it today", "description": "New brief", "note": "started"},
+        headers={"HX-Request": "1"},
+    )
+    task.refresh_from_db()
+    assert (task.title, task.description, task.note) == ("Ship it today", "New brief", "started")
+    assert project.messages.filter(is_event=True).last().body == f"Bob edited #{task.pk} Ship it today"
+    # A note-only change is a progress update, not a new brief, so agents aren't pinged.
+    client.post(reverse("projects:task_edit", args=[project.pk, task.pk]),
+                {"title": "Ship it today", "description": "New brief", "note": "nearly"})
+    assert project.messages.filter(is_event=True).count() == 1
+    # A blank title is refused and the task is left alone.
+    client.post(reverse("projects:task_edit", args=[project.pk, task.pk]), {"title": " ", "description": "", "note": ""})
+    task.refresh_from_db()
+    assert task.title == "Ship it today"
+
+
+def test_task_modal_is_members_only(client, team):
+    project, ada, _ = team
+    task = hub.create_task(ada, "Private")
+    User = get_user_model()
+    client.force_login(User.objects.create_user(email="eve@example.com", name="Eve"))
+    assert client.get(reverse("projects:task_detail", args=[project.pk, task.pk])).status_code == 404
+    assert client.post(reverse("projects:task_edit", args=[project.pk, task.pk]), {"title": "Pwned"}).status_code == 404

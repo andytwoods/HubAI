@@ -8,7 +8,18 @@ pre.cmd + .copy-button { display: block; }
 /* Sticky footer: footer sits at the bottom of the window when the page is short. */
 body { display: flex; flex-direction: column; min-height: 100vh; }
 body > main { flex: 1 0 auto; }
-/* Task list views (see js/board-view.js). */
+/* Per-column views and minimised columns (see js/board-view.js). */
+.column-head { display: flex; align-items: center; justify-content: space-between; gap: 0.25rem; margin-bottom: 0.75rem; min-width: 0; }
+.column-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.column-tools { display: flex; flex: none; }
+.column-tools .button { padding: 0 0.3rem; height: 1.6rem; font-size: 0.8rem; }
+.column.is-collapsed { flex: 0 0 2.5rem; width: 2.5rem; cursor: pointer; }
+.column.is-collapsed .board-column, .column.is-collapsed .column-tools { display: none; }
+.column.is-collapsed .column-head { writing-mode: vertical-rl; margin: 0; }
+.column.is-collapsed .column-label { overflow: visible; }
+.column.is-collapsed .column-label .tag { writing-mode: horizontal-tb; }
+.task-title { cursor: pointer; }
+.task-title:hover { text-decoration: underline; }
 .view-compact .task-card { padding: 0.35rem 0.6rem !important; margin-bottom: 0.3rem !important; }
 .view-compact .task-title { font-size: 0.875rem; }
 .view-compact .task-note { display: none; }
@@ -17,7 +28,7 @@ body > main { flex: 1 0 auto; }
 .view-titles .task-card { padding: 0.15rem 0.5rem !important; margin-bottom: 0.15rem !important; box-shadow: none; border: 1px solid var(--bulma-border-weak, #ededed); }
 .view-titles .task-title { font-size: 0.8rem; font-weight: 500 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .view-titles .task-meta, .view-titles .task-note, .view-titles .task-status { display: none; }
-.view-titles .board-column, .view-compact .board-column { min-height: 3rem; }
+.view-titles.board-column, .view-compact.board-column { min-height: 3rem; }
 /* Drag to reorder (see js/board-drag.js). */
 .task-card[draggable="true"] { cursor: grab; }
 .task-card.is-dragging { opacity: 0.4; cursor: grabbing; }
