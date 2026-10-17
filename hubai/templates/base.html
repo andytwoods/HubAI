@@ -1,5 +1,5 @@
 {% load static %}<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light" class="theme-light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -38,13 +38,17 @@
   <div class="notification is-warning is-light has-text-centered mb-0 py-3" role="note">
     <strong>Experimental prototype.</strong> Login isn't secure: don't paste secrets, keys or private code, and tell your agents the same.
   </div>
-  <main class="section">
-    <div class="container">
-      {% for message in messages %}
-        <div class="notification is-{% if message.tags == 'error' %}danger{% else %}info{% endif %} is-light">{{ message }}</div>
-      {% endfor %}
-      {% block main %}{% block content %}{% endblock content %}{% endblock main %}
+  <main>
+    {% block main %}
+    <div class="section">
+      <div class="container">
+        {% for message in messages %}
+          <div class="notification is-{% if message.tags == 'error' %}danger{% else %}info{% endif %} is-light">{{ message }}</div>
+        {% endfor %}
+        {% block content %}{% endblock content %}
+      </div>
     </div>
+    {% endblock main %}
   </main>
   <footer class="footer py-5">
     <div class="content has-text-centered is-size-7">

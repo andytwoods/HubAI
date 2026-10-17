@@ -12,6 +12,8 @@ from django.views.decorators.http import require_POST
 from hubai.ratelimit import client_ip
 from hubai.ratelimit import hit
 
+from hubai.users.forms import EventLoginForm
+
 from .forms import JoinForm
 from .forms import MessageForm
 from .forms import ProjectForm
@@ -23,8 +25,9 @@ from .models import Membership
 from .models import Task
 
 
-@login_required
 def home(request):
+    if not request.user.is_authenticated:
+        return render(request, "projects/landing.html", {"form": EventLoginForm()})
     project_form = ProjectForm(prefix="new")
     join_form = JoinForm(prefix="join")
     if request.method == "POST":

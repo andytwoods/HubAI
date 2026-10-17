@@ -18,3 +18,15 @@ body > main { flex: 1 0 auto; }
 .view-titles .task-title { font-size: 0.8rem; font-weight: 500 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .view-titles .task-meta, .view-titles .task-note, .view-titles .task-status { display: none; }
 .view-titles .board-column, .view-compact .board-column { min-height: 3rem; }
+/* Landing page */
+.landing-hero { position: relative; background: #eceefb; overflow: hidden; min-height: 32rem; display: flex; align-items: center; }
+.landing-hero-img { position: absolute; right: 0; top: 0; height: 100%; width: auto; max-width: none; }
+.landing-hero-text { position: relative; z-index: 1; max-width: 34rem; padding: 3rem 1.5rem 3rem max(1.5rem, 6vw); }
+.landing-hero .title { color: #1e2a5a; }
+.landing-step-img { width: 100%; max-width: 16rem; border-radius: 1rem; }
+@media (max-width: 900px) {
+  .landing-hero { flex-direction: column; min-height: 0; }
+  .landing-hero-img { position: static; width: 100%; height: auto; }
+  .landing-hero-text { padding: 2rem 1.25rem 1rem; }
+}
+.landing-hero .subtitle { color: #3c466e; }

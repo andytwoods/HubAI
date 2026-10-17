@@ -245,3 +245,9 @@ def test_agent_names_are_capped_per_member(client, team):
     is_error, text = tool(client, ada.token, "whoami", agent="one-too-many")
     assert is_error and "Too many agent names" in text
     assert not tool(client, ada.token, "whoami", agent="a3")[0]
+
+
+def test_root_shows_landing_page_to_visitors(client):
+    response = client.get(reverse("projects:home"))
+    assert response.status_code == 200
+    assert "How it works" in response.text and reverse("users:login") in response.text

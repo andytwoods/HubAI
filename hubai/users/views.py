@@ -66,4 +66,4 @@ def terms(request):
 @require_POST
 def logout_view(request):
     logout(request)
-    return redirect("users:login")
+    return redirect("projects:home")
