@@ -86,6 +86,11 @@ class Task(models.Model):
         BLOCKED = "blocked", "Blocked"
         DONE = "done", "Done"
 
+    class Priority(models.TextChoices):
+        HIGH = "high", "High"
+        NORMAL = "normal", "Normal"
+        LOW = "low", "Low"
+
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="tasks")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -97,8 +102,10 @@ class Task(models.Model):
     agent = models.CharField(max_length=60, blank=True, help_text="Which agent of the claimer is on it")
     note = models.TextField(blank=True)
     attempts = models.PositiveSmallIntegerField(default=0, help_text="How many times it has been claimed")
+    # A label, and a placement: setting high moves the task to the top of its column, low to the bottom.
+    priority = models.CharField(max_length=6, choices=Priority.choices, default=Priority.NORMAL)
     # Board order within a column (people drag cards on the dashboard). Workers take the lowest To do first.
-    position = models.PositiveIntegerField(default=0, db_index=True)
+    position = models.IntegerField(default=0, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

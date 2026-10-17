@@ -17,6 +17,7 @@
               <div class="box p-3 mb-2 task-card" draggable="true" data-task-id="{{ task.pk }}" title="#{{ task.pk }} {{ task.title }}{% if task.note %} — {{ task.note }}{% endif %}">
                 <p class="has-text-weight-semibold task-title" role="button" tabindex="0" title="Open task"
                    hx-get="{% url 'projects:task_detail' project.pk task.pk %}" hx-target="#modal" hx-swap="innerHTML" hx-trigger="click, keyup[key=='Enter']">#{{ task.pk }} {{ task.title }}</p>
+                {% if task.priority != "normal" %}<span class="tag is-small task-priority {% if task.priority == "high" %}is-danger is-light{% else %}is-light{% endif %}">{{ task.get_priority_display|lower }} priority</span>{% endif %}
                 {% if task.claimed_by %}
                   <p class="is-size-7 has-text-grey task-meta">{{ task.claimed_by.user }}{% if task.agent %} · {{ task.agent }}{% endif %}</p>
                 {% endif %}

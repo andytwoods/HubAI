@@ -19,6 +19,12 @@
           <div class="control"><input class="input" id="task-title" name="title" value="{{ task.title }}" required maxlength="200"></div>
         </div>
         <div class="field">
+          <label class="label" for="task-priority">Priority <span class="has-text-weight-normal has-text-grey">(high moves it to the top of its column, low to the bottom)</span></label>
+          <div class="control"><div class="select"><select id="task-priority" name="priority">
+            {% for v, l in task.Priority.choices %}<option value="{{ v }}"{% if v == task.priority %} selected{% endif %}>{{ l }}</option>{% endfor %}
+          </select></div></div>
+        </div>
+        <div class="field">
           <label class="label" for="task-description">Description <span class="has-text-weight-normal has-text-grey">(what the agent is told to do)</span></label>
           <div class="control"><textarea class="textarea" id="task-description" name="description" rows="6" maxlength="4000">{{ task.description }}</textarea></div>
         </div>

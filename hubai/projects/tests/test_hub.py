@@ -387,3 +387,32 @@ def test_task_modal_is_members_only(client, team):
     client.force_login(User.objects.create_user(email="eve@example.com", name="Eve"))
     assert client.get(reverse("projects:task_detail", args=[project.pk, task.pk])).status_code == 404
     assert client.post(reverse("projects:task_edit", args=[project.pk, task.pk]), {"title": "Pwned"}).status_code == 404
+
+
+def test_agents_can_set_priority(client, team):
+    project, ada, bob = team
+    one, two, three = (hub.create_task(ada, t) for t in ("one", "two", "three"))
+    # High at creation goes straight to the top; low to the bottom.
+    _, text = tool(client, bob.token, "create_task", title="urgent", priority="high", agent="bob-1")
+    assert json.loads(text)["priority"] == "high"
+    tool(client, bob.token, "create_task", title="someday", priority="low")
+    assert [t.title for t in project.tasks.all()] == ["urgent", "one", "two", "three", "someday"]
+    # Priority alone, on a task Bob neither created nor holds, is allowed and announced.
+    err, text = tool(client, bob.token, "update_task", task_id=three.pk, priority="high", agent="bob-1")
+    assert not err and json.loads(text)["priority"] == "high"
+    assert [t.title for t in project.tasks.all()] == ["three", "urgent", "one", "two", "someday"]
+    assert project.messages.filter(is_event=True).last().body == f"Bob · bob-1 set #{three.pk} three priority to high"
+    # But status still needs ownership.
+    err, text = tool(client, bob.token, "update_task", task_id=one.pk, status="done", priority="low")
+    assert err and "isn't yours" in text
+    err, text = tool(client, bob.token, "update_task", task_id=one.pk, priority="urgent")
+    assert err and "Priority must be one of" in text
+    err, text = tool(client, bob.token, "update_task", task_id=one.pk)
+    assert err and "Give a status" in text
+    # The dashboard modal can change it too, and the card shows the tag.
+    client.force_login(ada.user)
+    client.post(reverse("projects:task_edit", args=[project.pk, two.pk]),
+                {"title": "two", "description": "", "note": "", "priority": "low"})
+    board = client.get(reverse("projects:detail", args=[project.pk]), headers={"HX-Request": "1"}).text
+    assert board.count("low priority") == 2 and board.count("high priority") == 2
+    assert [t.title for t in project.tasks.all()] == ["three", "urgent", "one", "someday", "two"]

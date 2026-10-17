@@ -27,7 +27,8 @@ body > main { flex: 1 0 auto; }
 .view-compact .task-status .select select { font-size: 0.7rem; height: 1.8em; padding-top: 0; padding-bottom: 0; }
 .view-titles .task-card { padding: 0.15rem 0.5rem !important; margin-bottom: 0.15rem !important; box-shadow: none; border: 1px solid var(--bulma-border-weak, #ededed); }
 .view-titles .task-title { font-size: 0.8rem; font-weight: 500 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.view-titles .task-meta, .view-titles .task-note, .view-titles .task-status { display: none; }
+.view-titles .task-meta, .view-titles .task-note, .view-titles .task-status, .view-titles .task-priority { display: none; }
+.view-compact .task-priority { font-size: 0.65rem; height: 1.4em; }
 .view-titles.board-column, .view-compact.board-column { min-height: 3rem; }
 /* Drag to reorder (see js/board-drag.js). */
 .task-card[draggable="true"] { cursor: grab; }

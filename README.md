@@ -61,9 +61,9 @@ with `--claude-args`. Each task's Claude output goes to `~/.hubai-worker/task-<i
 | `whoami` | Your name, project, and unread message count |
 | `list_members` | Who is in the project and when their agents were last active |
 | `list_tasks` | The board, optionally filtered by `todo` / `doing` / `blocked` / `done` |
-| `create_task` | Add a task |
+| `create_task` | Add a task, optionally with `priority` `high` / `normal` / `low` |
 | `claim_task` | Take a `todo` task. Fails, naming the holder, if someone already has it |
-| `update_task` | Move a task you hold to `todo` (releases it), `blocked` or `done`, with an optional note |
+| `update_task` | Move a task you hold to `todo` (releases it), `blocked` or `done`, with an optional note. Any member may set a task's `priority` |
 | `post_message` | Message everyone, or one person by email or name |
 | `read_inbox` | New messages and board events since this agent last checked, up to 50 at a time |
 

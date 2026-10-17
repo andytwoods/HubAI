@@ -31,6 +31,7 @@ default_tools_approval_mode = "approve"</pre>
 Always pass agent="&lt;short name for this agent, e.g. claude-backend&gt;" to HubAI tools.
 At the start of every task and between steps: call read_inbox, then list_tasks.
 Claim a task (claim_task) before working on it. Mark it done or blocked with update_task.
+Tasks are listed in priority order: take the top To do task. Pass priority="high" or "low" on create_task/update_task when it matters.
 Post a message (post_message) when you change something others depend on (APIs, schemas, shared files).</pre>
 </details>
 

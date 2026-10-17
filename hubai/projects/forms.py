@@ -24,6 +24,7 @@ class TaskEditForm(forms.Form):
     title = forms.CharField(max_length=200)
     description = forms.CharField(required=False, max_length=4000)
     note = forms.CharField(required=False, max_length=4000)
+    priority = forms.ChoiceField(choices=Task.Priority.choices, required=False)
 
 
 class TaskStatusForm(forms.Form):

@@ -32,6 +32,15 @@ INSTRUCTIONS = (
     "what you changed (files, endpoints, decisions others depend on). Check read_inbox between steps."
 )
 
+PRIORITY_PROP = {
+    "priority": {
+        "type": "string",
+        "enum": Task.Priority.values,
+        "description": "Optional. 'high' puts the task at the top of its column (workers take the top To do task "
+                       "first), 'low' at the bottom. Leave out for normal.",
+    }
+}
+
 AGENT_PROP = {
     "agent": {
         "type": "string",
@@ -52,7 +61,7 @@ TOOLS = [
     },
     {
         "name": "list_tasks",
-        "description": "Tasks on the project board, optionally filtered by status.",
+        "description": "Tasks on the project board in priority order (top first), optionally filtered by status.",
         "inputSchema": {
             "type": "object",
             "properties": {"status": {"type": "string", "enum": Task.Status.values}, **AGENT_PROP},
@@ -60,10 +69,10 @@ TOOLS = [
     },
     {
         "name": "create_task",
-        "description": "Add a task to the board (status 'todo').",
+        "description": "Add a task to the board (status 'todo'), optionally with a priority.",
         "inputSchema": {
             "type": "object",
-            "properties": {"title": {"type": "string"}, "description": {"type": "string"}, **AGENT_PROP},
+            "properties": {"title": {"type": "string"}, "description": {"type": "string"}, **PRIORITY_PROP, **AGENT_PROP},
             "required": ["title"],
         },
     },
@@ -79,8 +88,9 @@ TOOLS = [
     {
         "name": "update_task",
         "description": (
-            "Set a task's status (todo releases it; doing, blocked, done) and/or a progress note. "
-            "While working, call it with status 'doing' and a short note after each major step."
+            "Set a task's status (todo releases it; doing, blocked, done), a progress note, and/or its priority. "
+            "While working, call it with status 'doing' and a short note after each major step. "
+            "Priority alone may be set on any task, even one you don't hold."
         ),
         "inputSchema": {
             "type": "object",
@@ -88,9 +98,10 @@ TOOLS = [
                 "task_id": {"type": "integer"},
                 "status": {"type": "string", "enum": Task.Status.values},
                 "note": {"type": "string"},
+                **PRIORITY_PROP,
                 **AGENT_PROP,
             },
-            "required": ["task_id", "status"],
+            "required": ["task_id"],
         },
     },
     {
@@ -170,7 +181,9 @@ def call_tool(membership, name, args):
                 tasks = tasks.filter(status=status)
             return [hub.task_dict(t) for t in tasks]
         case "create_task":
-            return hub.task_dict(hub.create_task(membership, _str(args, "title"), _str(args, "description")))
+            return hub.task_dict(
+                hub.create_task(membership, _str(args, "title"), _str(args, "description"), _str(args, "priority"))
+            )
         case "release_task":
             return hub.task_dict(hub.release_task(membership, _int(args, "task_id"), _str(args, "reason"), agent))
         case "claim_task":
@@ -178,7 +191,11 @@ def call_tool(membership, name, args):
             return hub.task_dict(hub.claim_task(membership, _int(args, "task_id"), agent))
         case "update_task":
             note = _str(args, "note") if "note" in args else None
-            task = hub.update_task(membership, _int(args, "task_id"), _str(args, "status"), note, agent)
+            status = _str(args, "status") if "status" in args else None
+            priority = _str(args, "priority") if "priority" in args else None
+            if status is None and note is None and priority is None:
+                raise ValueError("Give a status, a note or a priority.")
+            task = hub.update_task(membership, _int(args, "task_id"), status, note, agent, priority=priority)
             return hub.task_dict(task)
         case "post_message":
             return hub.message_dict(hub.post_message(membership, _str(args, "body"), _str(args, "to"), agent))

@@ -9,6 +9,7 @@ from datetime import timedelta
 
 from django.db.models import F
 from django.db.models import Max
+from django.db.models import Min
 
 from hubai.projects.models import AgentPresence
 from hubai.projects.models import InboxCursor
@@ -104,17 +105,45 @@ def get_task(project, task_id):
         raise HubError(f"No task #{task_id} in this project.") from None
 
 
-def create_task(membership, title, description=""):
+def _priority_position(project, priority):
+    """Where a task of this priority goes: high at the top of the board, anything else at the bottom."""
+    edge = project.tasks.aggregate(low=Min("position"), high=Max("position"))
+    if priority == Task.Priority.HIGH:
+        return 0 if edge["low"] is None else edge["low"] - 1
+    return 0 if edge["high"] is None else edge["high"] + 1
+
+
+def _check_priority(priority):
+    if priority not in Task.Priority.values:
+        raise HubError(f"Priority must be one of: {', '.join(Task.Priority.values)}.")
+
+
+def create_task(membership, title, description="", priority=Task.Priority.NORMAL):
     title = title.strip()
     if not title:
         raise HubError("A task needs a title.")
+    priority = priority or Task.Priority.NORMAL
+    _check_priority(priority)
     if membership.project.tasks.count() >= MAX_TASKS_PER_PROJECT:
         raise HubError(f"This project has {MAX_TASKS_PER_PROJECT} tasks, the maximum.")
-    last = membership.project.tasks.aggregate(last=Max("position"))["last"]
     return Task.objects.create(
         project=membership.project, title=title[:200], description=description[:MAX_BODY], created_by=membership,
-        position=0 if last is None else last + 1,
+        priority=priority, position=_priority_position(membership.project, priority),
     )
+
+
+def set_priority(membership, task_id, priority, agent=""):
+    """Anyone on the project may reprioritise: high jumps to the top of its column, low drops to the bottom."""
+    _check_priority(priority)
+    task = get_task(membership.project, task_id)
+    if task.priority == priority:
+        return task
+    task.priority = priority
+    if priority != Task.Priority.NORMAL:
+        task.position = _priority_position(membership.project, priority)
+    task.save(update_fields=["priority", "position", "updated_at"])
+    _announce(membership, agent, f"{_actor(membership, agent)} set #{task.pk} {task.title} priority to {priority}")
+    return task
 
 
 def reorder_tasks(membership, task_ids, status=None):
@@ -162,15 +191,23 @@ def claim_task(membership, task_id, agent=""):
     return task
 
 
-def update_task(membership, task_id, status, note=None, agent="", override=False):
-    """Change a task's status. Agents may only change tasks they hold; humans on the dashboard can override."""
-    if status not in Task.Status.values:
+def update_task(membership, task_id, status=None, note=None, agent="", override=False, priority=None):
+    """Change a task's status and/or note. Agents may only change tasks they hold; humans on the dashboard can
+    override. A priority may be set by anyone, so on its own it skips the ownership rules; alongside a status or
+    note it's applied only once they have been accepted, so a refused call changes nothing."""
+    if priority:
+        _check_priority(priority)
+        if status is None and note is None:
+            return set_priority(membership, task_id, priority, agent)
+    if status is not None and status not in Task.Status.values:
         raise HubError(f"Status must be one of: {', '.join(Task.Status.values)}.")
     with transaction.atomic():
         try:
             task = membership.project.tasks.select_for_update().get(pk=task_id)
         except Task.DoesNotExist:
             raise HubError(f"No task #{task_id} in this project.") from None
+        if status is None:
+            status = task.status
         if not override:
             if task.claimed_by_id and task.claimed_by_id != membership.pk:
                 raise HubError(f"Task #{task.pk} is held{_holder(task)}. Ask them with post_message.")
@@ -192,14 +229,18 @@ def update_task(membership, task_id, status, note=None, agent="", override=False
     # Progress notes on an unchanged status stay on the card; only status changes go to everyone's inbox.
     if status_changed:
         _announce(membership, agent, f"{_actor(membership, agent)} set #{task.pk} {task.title} to {task.status}")
+    if priority:
+        task = set_priority(membership, task_id, priority, agent)
     return task
 
 
-def edit_task(membership, task_id, title, description, note):
+def edit_task(membership, task_id, title, description, note, priority=None):
     """A person rewrites a task's text on the dashboard. Agents hear about it only if the brief changed."""
     title = title.strip()
     if not title:
         raise HubError("A task needs a title.")
+    if priority:
+        set_priority(membership, task_id, priority)
     task = get_task(membership.project, task_id)
     brief_changed = (task.title, task.description) != (title[:200], description[:MAX_BODY])
     task.title, task.description, task.note = title[:200], description[:MAX_BODY], note[:MAX_BODY]
@@ -316,6 +357,7 @@ def task_dict(task):
         "title": task.title,
         "description": task.description,
         "status": task.status,
+        "priority": task.priority,
         "created_by": task.created_by.user.email if task.created_by else None,
         "claimed_by": str(task.claimed_by.user) if task.claimed_by else None,
         "agent": task.agent or None,
