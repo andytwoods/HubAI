@@ -72,6 +72,9 @@ def face_on(d, cx, cy, s, face):
         for ex in (-1, 1): d.ellipse([cx + ex*s - s*0.28, cy - s*0.45, cx + ex*s + s*0.28, cy + s*0.1], fill=INK)
     if face == "hot":
         d.ellipse([cx - s*0.35, cy + s*0.35, cx + s*0.35, cy + s*0.95], fill=INK)
+    elif face == "sad":
+        d.arc([cx - s*0.7, cy + s*0.5, cx + s*0.7, cy + s*1.3], 200, 340, fill=INK, width=5)
+        d.ellipse([cx + s*0.75, cy + s*0.05, cx + s*1.0, cy + s*0.45], fill=(90, 160, 255))  # tear
     elif face == "happy":
         d.arc([cx - s*0.7, cy + 0.0, cx + s*0.7, cy + s*0.9], 20, 160, fill=INK, width=5)
     elif face == "sleep":
@@ -85,7 +88,7 @@ def meter(d, x, y, pct, label="CPU"):
 def scene1(t):
     im = Image.new("RGB", (W, H), (255, 236, 228)); d = ImageDraw.Draw(im)
     jit = int(5 * math.sin(t * 70))
-    laptop(d, W/2 + jit, 430, 420, "hot", glow=(255, 200, 180))
+    laptop(d, W/2 + jit, 430, 420, "sad", glow=(255, 200, 180))
     meter(d, 90, 90, min(100, 70 + t * 40))
     meter(d, 90, 190, min(100, 80 + t * 30), "RAM")
     d.text((W - 90, 110), "agents: 8", font=f(B, 30), fill=INK, anchor="ra")
@@ -122,7 +125,7 @@ def scene3(t):
     d.ellipse([hub[0] - 60, hub[1] - 60, hub[0] + 60, hub[1] + 60], fill=YELLOW, outline=INDIGO, width=5)
     d.text((hub[0], hub[1]), "HubAI", font=f(B, 24), fill=INK, anchor="mm")
     cool = ease((t - 2.6) / 1.2)
-    laptop(d, mac[0], mac[1], 220, "happy" if cool > 0.5 else "hot", "MacBook (lead)")
+    laptop(d, mac[0], mac[1], 220, "happy" if cool > 0.5 else "sad", "MacBook (lead)")
     awake = t > 1.8
     tower(d, home[0], home[1], 120, "happy" if awake else "sleep", "Home PC")
     tower(d, work[0], work[1], 110, "happy" if awake else "sleep", "Work PC")
