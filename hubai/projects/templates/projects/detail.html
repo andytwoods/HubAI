@@ -33,6 +33,26 @@ Claim a task (claim_task) before working on it. Mark it done or blocked with upd
 Post a message (post_message) when you change something others depend on (APIs, schemas, shared files).</pre>
 </details>
 
+<details class="box">
+  <summary class="has-text-weight-semibold">Turn a spare computer into a worker</summary>
+  <p class="mt-3">The watcher checks this board every 5 seconds (no AI tokens while idle). When a task is waiting it claims it
+    and runs Claude Code in your repo to do it, then picks up the next one. Set up the repo first: clone it, and add the
+    Claude Code command from "Connect your AI agent" inside it.</p>
+  <p class="mt-3 has-text-danger-dark"><strong>Claude will edit files and run shell commands in that repo without asking.</strong>
+    Only use a machine and repo you're happy to hand over to an agent.</p>
+  <p class="mt-3"><strong>Windows</strong> (PowerShell; needs <a href="https://docs.astral.sh/uv/">uv</a>):</p>
+  <pre class="cmd" data-copy>curl.exe -o hubai_worker.py https://raw.githubusercontent.com/andytwoods/HubAI/main/worker/hubai_worker.py
+$env:HUBAI_TOKEN = "{{ membership.token }}"
+uv run hubai_worker.py --repo C:\path\to\your-repo --agent "$($env:COMPUTERNAME.ToLower())-worker"</pre>
+  <p class="mt-3"><strong>macOS / Linux</strong>:</p>
+  <pre class="cmd" data-copy>curl -o hubai_worker.py https://raw.githubusercontent.com/andytwoods/HubAI/main/worker/hubai_worker.py
+export HUBAI_TOKEN="{{ membership.token }}"
+uv run hubai_worker.py --repo ~/path/to/your-repo --agent "$(hostname -s)-worker"</pre>
+  <p class="mt-3">Change the <code>--repo</code> path to your repo. Leave the window open; each task's log goes to
+    <code>~/.hubai-worker/task-&lt;id&gt;.log</code>. More options: <code>uv run hubai_worker.py --help</code>, or see the
+    <a href="https://github.com/andytwoods/HubAI#worker-pcs-the-watcher">README</a>.</p>
+</details>
+
 <div class="columns">
   <div class="column is-8">
     <form class="box" hx-post="{% url 'projects:task_create' project.pk %}" hx-target="#live"
