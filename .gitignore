@@ -9,3 +9,4 @@ staticfiles/
 .pytest_cache/
 media/*.mp4
 media/*.mov
+media/scenes.json

@@ -23,9 +23,24 @@ def ease(p):
     p = max(0.0, min(1.0, p)); return p * p * (3 - 2 * p)
 
 def caption(d, text):
-    fo = f(B, 36); w = d.textlength(text, font=fo)
-    d.rounded_rectangle([W/2 - w/2 - 30, H - 100, W/2 + w/2 + 30, H - 38], radius=20, fill=(20, 26, 60))
-    d.text((W/2, H - 92), text, font=fo, fill="white", anchor="ma")
+    """Bottom caption, wrapped to at most two lines, kept clear of the presenter circle on the right."""
+    fo, max_w = f(B, 32), W - 420
+    lines, line = [], ""
+    for word in text.split():
+        trial = f"{line} {word}".strip()
+        if d.textlength(trial, font=fo) > max_w and line:
+            lines.append(line)
+            line = word
+        else:
+            line = trial
+    lines.append(line)
+    lines = lines[:2]
+    w = max(d.textlength(ln, font=fo) for ln in lines)
+    cx = 40 + max_w / 2
+    top = H - 46 - 42 * len(lines)
+    d.rounded_rectangle([cx - w/2 - 26, top - 10, cx + w/2 + 26, H - 34], radius=18, fill=(20, 26, 60))
+    for i, ln in enumerate(lines):
+        d.text((cx, top + i * 42), ln, font=fo, fill="white", anchor="ma")
 
 def terminal(d, x, y, w, h, title, lines, color=(220, 225, 255)):
     d.rounded_rectangle([x, y, x + w, y + h], radius=16, fill=(24, 27, 46))
@@ -222,6 +237,10 @@ def scene4(t, icon):
 
 
 def main():
+    global SCENES
+    if len(sys.argv) > 2:  # optional JSON [[start, end, caption], ...] timed to a presenter recording
+        import json
+        SCENES = [tuple(x) for x in json.loads(Path(sys.argv[2]).read_text())]
     icon = Image.open(IMG / "icon-512.png").convert("RGBA")
     dur = SCENES[-1][1]
     with tempfile.TemporaryDirectory() as tmp:
