@@ -76,7 +76,10 @@ TOOLS = [
     },
     {
         "name": "update_task",
-        "description": "Set a task's status (todo releases it; doing, blocked, done) and optionally a progress note.",
+        "description": (
+            "Set a task's status (todo releases it; doing, blocked, done) and/or a progress note. "
+            "While working, call it with status 'doing' and a short note after each major step."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {

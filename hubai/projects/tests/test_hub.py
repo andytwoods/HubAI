@@ -194,3 +194,13 @@ def test_tool_calls_record_agent_presence_shown_on_dashboard(client, team):
     client.force_login(ada.user)
     text = client.get(reverse("projects:detail", args=[project.pk]), headers={"HX-Request": "1"}).text
     assert "workpc-worker" in text and "1 active" in text
+
+
+def test_progress_note_updates_card_without_inbox_event(client, team):
+    _, ada, bob = team
+    task_id = json.loads(tool(client, ada.token, "create_task", title="Login")[1])["id"]
+    tool(client, ada.token, "claim_task", task_id=task_id, agent="w")
+    tool(client, bob.token, "read_inbox")
+    tool(client, ada.token, "update_task", task_id=task_id, status="doing", note="step 2/4: tests written", agent="w")
+    assert Task.objects.get().note == "step 2/4: tests written"
+    assert json.loads(tool(client, bob.token, "read_inbox")[1]) == []

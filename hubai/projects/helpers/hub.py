@@ -141,6 +141,7 @@ def update_task(membership, task_id, status, note=None, agent="", override=False
                 raise HubError(f"Task #{task.pk} is held{_holder(task)}. Ask them with post_message.")
             if task.claimed_by_id is None and status == Task.Status.DOING:
                 raise HubError(f"Use claim_task to start task #{task.pk}.")
+        status_changed = task.status != status
         task.status = status
         if status == Task.Status.TODO:
             task.claimed_by = None
@@ -151,7 +152,9 @@ def update_task(membership, task_id, status, note=None, agent="", override=False
         if note is not None:
             task.note = note[:MAX_BODY]
         task.save()
-    _announce(membership, agent, f"{_actor(membership, agent)} set #{task.pk} {task.title} to {task.status}")
+    # Progress notes on an unchanged status stay on the card; only status changes go to everyone's inbox.
+    if status_changed:
+        _announce(membership, agent, f"{_actor(membership, agent)} set #{task.pk} {task.title} to {task.status}")
     return task
 
 
