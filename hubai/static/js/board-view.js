@@ -29,7 +29,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
   apply();
-  document.body.addEventListener("htmx:afterSwap", (e) => { if (e.target === live) apply(); });
+  // htmx fires afterSwap on the element that made the request (the poll is #live itself, but a drag, a
+  // status select, the add-task form or the modal are not), so look at where the response was swapped.
+  document.body.addEventListener("htmx:afterSwap", (e) => {
+    const target = (e.detail && e.detail.target) || e.target;
+    if (target === live || live.contains(target)) apply();
+  });
 
   live.addEventListener("click", (e) => {
     const column = e.target.closest("[data-column]");
