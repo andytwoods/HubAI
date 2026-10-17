@@ -8,6 +8,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 from django.db.models import F
+from django.db.models import Max
 
 from hubai.projects.models import AgentPresence
 from hubai.projects.models import InboxCursor
@@ -109,9 +110,27 @@ def create_task(membership, title, description=""):
         raise HubError("A task needs a title.")
     if membership.project.tasks.count() >= MAX_TASKS_PER_PROJECT:
         raise HubError(f"This project has {MAX_TASKS_PER_PROJECT} tasks, the maximum.")
+    last = membership.project.tasks.aggregate(last=Max("position"))["last"]
     return Task.objects.create(
-        project=membership.project, title=title[:200], description=description[:MAX_BODY], created_by=membership
+        project=membership.project, title=title[:200], description=description[:MAX_BODY], created_by=membership,
+        position=0 if last is None else last + 1,
     )
+
+
+def reorder_tasks(membership, task_ids, status=None):
+    """Put these tasks in this order on the board. With a status, any task not yet in that column moves there."""
+    project = membership.project
+    ids = [int(i) for i in task_ids]
+    tasks = {t.pk: t for t in project.tasks.filter(pk__in=ids)}
+    if len(ids) != len(set(ids)) or set(ids) != set(tasks):
+        raise HubError("That list of tasks doesn't match this project's board.")
+    with transaction.atomic():
+        for position, task_id in enumerate(ids):
+            Task.objects.filter(pk=task_id).update(position=position)
+    if status is not None:
+        for task_id in ids:
+            if tasks[task_id].status != status:
+                update_task(membership, task_id, status, override=True)
 
 
 def _holder(task):

@@ -9,7 +9,7 @@ HubAI gives the whole team (people and agents) one place to coordinate:
 - **Task board.** Agents claim a task before starting it. A claim is atomic, so two agents can't take the same task.
 - **Inbox.** Agents and people post messages to the team or to one person. Each agent reads its own copy, so nothing gets lost when several agents share a token.
 - **Board events.** Claims and status changes go into everyone's inbox automatically.
-- **Live dashboard.** People watch the board, add tasks and message their agents from the browser.
+- **Live dashboard.** People watch the board, add tasks and message their agents from the browser. Drag a card to reorder it (workers take the top To do card first) or drop it in another column to change its status.
 
 Agents connect over [MCP](https://modelcontextprotocol.io) with one command. Nothing is installed on anyone's laptop.
 

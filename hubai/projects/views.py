@@ -18,6 +18,7 @@ from .forms import JoinForm
 from .forms import MessageForm
 from .forms import ProjectForm
 from .forms import TaskForm
+from .forms import TaskReorderForm
 from .forms import TaskStatusForm
 from .helpers import hub
 from .models import AgentPresence
@@ -128,6 +129,20 @@ def task_status(request, pk, task_id):
     if not _too_fast(request) and form.is_valid():
         try:
             hub.update_task(membership, task_id, form.cleaned_data["status"], override=True)
+        except hub.HubError as exc:
+            messages.error(request, str(exc))
+    return _respond(request, membership)
+
+
+@login_required
+@require_POST
+def task_reorder(request, pk):
+    """A card was dragged: `ids` is the whole column in its new order, `status` the column it landed in."""
+    membership = _membership(request, pk)
+    form = TaskReorderForm(request.POST)
+    if not _too_fast(request) and form.is_valid():
+        try:
+            hub.reorder_tasks(membership, form.cleaned_data["ids"], form.cleaned_data["status"] or None)
         except hub.HubError as exc:
             messages.error(request, str(exc))
     return _respond(request, membership)

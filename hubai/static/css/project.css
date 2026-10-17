@@ -18,6 +18,10 @@ body > main { flex: 1 0 auto; }
 .view-titles .task-title { font-size: 0.8rem; font-weight: 500 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .view-titles .task-meta, .view-titles .task-note, .view-titles .task-status { display: none; }
 .view-titles .board-column, .view-compact .board-column { min-height: 3rem; }
+/* Drag to reorder (see js/board-drag.js). */
+.task-card[draggable="true"] { cursor: grab; }
+.task-card.is-dragging { opacity: 0.4; cursor: grabbing; }
+.board-column.is-drop-target { outline: 2px dashed var(--bulma-link, #485fc7); outline-offset: 2px; border-radius: 6px; }
 /* Landing page */
 .landing-hero { position: relative; background: #eceefb; overflow: hidden; min-height: 32rem; display: flex; align-items: center; }
 .landing-hero-img { position: absolute; right: 0; top: 0; height: 100%; width: auto; max-width: none; }

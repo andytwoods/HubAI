@@ -4,6 +4,7 @@
 {% load static %}
 <script src="{% static 'js/copy.js' %}" defer></script>
 <script src="{% static 'js/board-view.js' %}" defer></script>
+<script src="{% static 'js/board-drag.js' %}" defer></script>
 <div class="level">
   <div class="level-left">
     <h1 class="title mb-0">{{ project.name }}</h1>
@@ -94,8 +95,8 @@ uv run hubai_worker.py --repo ~/path/to/your-repo --agent "$(hostname -s)-worker
   <button type="button" class="button is-small" data-board-view="compact">Compact</button>
   <button type="button" class="button is-small" data-board-view="titles">Titles only</button>
 </div>
-<div id="board-view" class="view-normal">
-  <div id="live" hx-get="{% url 'projects:detail' project.pk %}" hx-trigger="every 3s [!document.querySelector('#live select:focus')]" hx-swap="innerHTML">
+<div id="board-view" class="view-normal" data-reorder-url="{% url 'projects:task_reorder' project.pk %}">
+  <div id="live" hx-get="{% url 'projects:detail' project.pk %}" hx-trigger="every 3s [!document.querySelector('#live select:focus') && !document.body.classList.contains('is-dragging')]" hx-swap="innerHTML">
     {% include "projects/partials/_live.html" %}
   </div>
 </div>

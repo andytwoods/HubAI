@@ -22,3 +22,11 @@ class MessageForm(forms.Form):
 
 class TaskStatusForm(forms.Form):
     status = forms.ChoiceField(choices=Task.Status.choices)
+
+
+class TaskReorderForm(forms.Form):
+    status = forms.ChoiceField(choices=Task.Status.choices, required=False)
+    ids = forms.RegexField(regex=r"^\d+(,\d+)*$")
+
+    def clean_ids(self):
+        return [int(i) for i in self.cleaned_data["ids"].split(",")]

@@ -97,11 +97,13 @@ class Task(models.Model):
     agent = models.CharField(max_length=60, blank=True, help_text="Which agent of the claimer is on it")
     note = models.TextField(blank=True)
     attempts = models.PositiveSmallIntegerField(default=0, help_text="How many times it has been claimed")
+    # Board order within a column (people drag cards on the dashboard). Workers take the lowest To do first.
+    position = models.PositiveIntegerField(default=0, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["created_at"]
+        ordering = ["position", "created_at"]
         indexes = [models.Index(fields=["project", "status"])]
 
     def __str__(self):

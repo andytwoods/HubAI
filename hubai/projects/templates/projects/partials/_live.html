@@ -4,9 +4,9 @@
       {% for value, label, tasks in columns %}
         <div class="column">
           <h2 class="title is-6">{{ label }} <span class="tag is-rounded">{{ tasks|length }}</span></h2>
-          <div class="board-column">
+          <div class="board-column" data-status="{{ value }}">
             {% for task in tasks %}
-              <div class="box p-3 mb-2 task-card" title="#{{ task.pk }} {{ task.title }}{% if task.note %} — {{ task.note }}{% endif %}">
+              <div class="box p-3 mb-2 task-card" draggable="true" data-task-id="{{ task.pk }}" title="#{{ task.pk }} {{ task.title }}{% if task.note %} — {{ task.note }}{% endif %}">
                 <p class="has-text-weight-semibold task-title">#{{ task.pk }} {{ task.title }}</p>
                 {% if task.claimed_by %}
                   <p class="is-size-7 has-text-grey task-meta">{{ task.claimed_by.user }}{% if task.agent %} · {{ task.agent }}{% endif %}</p>

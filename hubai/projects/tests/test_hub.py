@@ -321,3 +321,36 @@ def test_stats_needs_the_key(client, team, settings):
     assert client.get(reverse("projects:stats"), {"key": "wrong"}).status_code == 404
     data = client.get(reverse("projects:stats"), {"key": "s3cret"}).json()
     assert data["users"] == 2 and data["projects"][0]["members"] == 2
+
+
+def test_dragging_reorders_a_column_and_can_change_status(client, team):
+    project, ada, _ = team
+    client.force_login(ada.user)
+    first, second, third = (hub.create_task(ada, t) for t in ("one", "two", "three"))
+    assert [t.title for t in project.tasks.all()] == ["one", "two", "three"]
+    url = reverse("projects:task_reorder", args=[project.pk])
+    client.post(url, {"status": "todo", "ids": f"{third.pk},{first.pk},{second.pk}"}, headers={"HX-Request": "1"})
+    assert [t.title for t in project.tasks.all()] == ["three", "one", "two"]
+    # Dropped into Doing: it changes status (as a human override) and keeps its place.
+    response = client.post(url, {"status": "doing", "ids": str(second.pk)}, headers={"HX-Request": "1"})
+    second.refresh_from_db()
+    assert second.status == "doing" and second.claimed_by == ada
+    assert "set #%d two to doing" % second.pk in response.text
+    # list_tasks follows the board order, so a worker takes the top To do card first.
+    _, text = tool(client, ada.token, "list_tasks", status="todo")
+    assert [t["title"] for t in json.loads(text)] == ["three", "one"]
+
+
+def test_reorder_rejects_tasks_from_other_projects(client, team):
+    project, ada, bob = team
+    other = hub.create_project(bob.user, "Other")
+    foreign = hub.create_task(Membership.objects.get(project=other, user=bob.user), "theirs")
+    mine = hub.create_task(ada, "mine")
+    client.force_login(ada.user)
+    url = reverse("projects:task_reorder", args=[project.pk])
+    with pytest.raises(hub.HubError, match="doesn't match"):
+        hub.reorder_tasks(ada, [mine.pk, foreign.pk], "doing")
+    client.post(url, {"status": "doing", "ids": f"{mine.pk},{foreign.pk}"})
+    foreign.refresh_from_db()
+    mine.refresh_from_db()
+    assert foreign.status == "todo" and mine.status == "todo"
