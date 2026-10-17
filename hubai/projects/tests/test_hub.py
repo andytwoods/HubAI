@@ -84,7 +84,7 @@ def test_mcp_task_claiming_is_exclusive(client, team):
     task_id = json.loads(text)["id"]
     assert not tool(client, ada.token, "claim_task", task_id=task_id, agent="claude-1")[0]
     is_error, text = tool(client, bob.token, "claim_task", task_id=task_id)
-    assert is_error and "already doing by Ada (claude-1)" in text
+    assert is_error and "already in progress by Ada (claude-1)" in text
     is_error, text = tool(client, bob.token, "update_task", task_id=task_id, status="done")
     assert is_error and "held by Ada" in text
     tool(client, ada.token, "update_task", task_id=task_id, status="done", note="shipped", agent="claude-1")

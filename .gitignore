@@ -7,3 +7,4 @@ staticfiles/
 .env.*
 .idea/workspace.xml
 .pytest_cache/
+media/*.mp4

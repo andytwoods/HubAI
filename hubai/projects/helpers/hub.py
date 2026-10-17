@@ -132,10 +132,8 @@ def claim_task(membership, task_id, agent=""):
     )
     task.refresh_from_db()
     if not claimed:
-        raise HubError(
-            f"Task #{task.pk} is already {task.get_status_display().lower()}{_holder(task)}. "
-            "Pick another task or post_message them."
-        )
+        state = {"doing": "in progress", "blocked": "blocked", "done": "done"}.get(task.status, task.status)
+        raise HubError(f"Task #{task.pk} is already {state}{_holder(task)}. Pick another task or post_message them.")
     _announce(membership, agent, f"{_actor(membership, agent)} claimed #{task.pk} {task.title}")
     return task
 
