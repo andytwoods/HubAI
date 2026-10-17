@@ -41,6 +41,11 @@ $env:HUBAI_TOKEN = "<your token from the project page>"
 uv run hubai_worker.py --repo C:\path\to\your-repo --agent workpc-worker
 ```
 
+Before starting a worker, check that the repo's own tests pass on that machine (native Windows often fails Unix-style
+setups; WSL2 avoids that), and that `git push --dry-run` works. On Windows, run the watcher from the desktop session
+rather than over SSH, since SSH sessions can't read saved GitHub credentials; a logon scheduled task
+(`schtasks /create /tn "HubAI worker" /tr "%USERPROFILE%\hubai-worker.cmd" /sc onlogon /it`) keeps it running after reboots.
+
 The repo must already have the `hubai` MCP server added to Claude Code (step 3 above). By default Claude runs with
 `--permission-mode acceptEdits --allowedTools Bash,mcp__hubai__*`, meaning it can edit files and run any shell command
 in that repo without asking. Only run the watcher on a machine and repo you're happy to hand over to an agent. Change it
