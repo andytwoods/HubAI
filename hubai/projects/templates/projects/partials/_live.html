@@ -11,6 +11,7 @@
                 {% if task.claimed_by %}
                   <p class="is-size-7 has-text-grey task-meta">{{ task.claimed_by.user }}{% if task.agent %} · {{ task.agent }}{% endif %}</p>
                 {% endif %}
+                {% if task.attempts > 1 %}<p class="is-size-7 has-text-warning-dark task-meta">attempt {{ task.attempts }} of 3</p>{% endif %}
                 {% if task.note %}<p class="is-size-7 mt-1 task-note">{{ task.note }}</p>{% endif %}
                 <form class="mt-2 task-status" hx-post="{% url 'projects:task_status' project.pk task.pk %}" hx-target="#live" hx-trigger="change">
                   <div class="select is-small">

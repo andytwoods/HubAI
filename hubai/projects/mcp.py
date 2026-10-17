@@ -94,6 +94,18 @@ TOOLS = [
         },
     },
     {
+        "name": "release_task",
+        "description": (
+            "Give up on a task you hold because your attempt failed. It goes back to To do for another try, "
+            "or to Blocked after 3 attempts."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"task_id": {"type": "integer"}, "reason": {"type": "string"}, **AGENT_PROP},
+            "required": ["task_id", "reason"],
+        },
+    },
+    {
         "name": "post_message",
         "description": "Send a message to the whole team, or to one person by email or name.",
         "inputSchema": {
@@ -152,13 +164,17 @@ def call_tool(membership, name, args):
                 for m in membership.project.memberships.select_related("user")
             ]
         case "list_tasks":
+            hub.release_stale_tasks(membership.project)
             tasks = membership.project.tasks.select_related("claimed_by__user", "created_by__user")
             if status := _str(args, "status"):
                 tasks = tasks.filter(status=status)
             return [hub.task_dict(t) for t in tasks]
         case "create_task":
             return hub.task_dict(hub.create_task(membership, _str(args, "title"), _str(args, "description")))
+        case "release_task":
+            return hub.task_dict(hub.release_task(membership, _int(args, "task_id"), _str(args, "reason"), agent))
         case "claim_task":
+            hub.release_stale_tasks(membership.project)
             return hub.task_dict(hub.claim_task(membership, _int(args, "task_id"), agent))
         case "update_task":
             note = _str(args, "note") if "note" in args else None

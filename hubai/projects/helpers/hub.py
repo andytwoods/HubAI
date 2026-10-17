@@ -5,6 +5,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from datetime import timedelta
+
 from django.db.models import F
 
 from hubai.projects.models import AgentPresence
@@ -22,6 +24,8 @@ MAX_BODY = 4000
 INBOX_LIMIT = 50
 MAX_AGENTS_PER_MEMBER = 20
 MAX_TASKS_PER_PROJECT = 500
+MAX_ATTEMPTS = 3  # after this many failed claims a task goes to Blocked for a human
+STALE_AFTER = timedelta(minutes=15)  # an agent this quiet while holding a task is presumed dead
 
 
 class HubError(Exception):
@@ -128,7 +132,8 @@ def claim_task(membership, task_id, agent=""):
     """Atomically take a to-do task. Fails if someone else got there first."""
     task = get_task(membership.project, task_id)
     claimed = Task.objects.filter(pk=task.pk, status=Task.Status.TODO).update(
-        status=Task.Status.DOING, claimed_by=membership, agent=agent[:60], updated_at=timezone.now()
+        status=Task.Status.DOING, claimed_by=membership, agent=agent[:60], updated_at=timezone.now(),
+        attempts=F("attempts") + 1,
     )
     task.refresh_from_db()
     if not claimed:
@@ -169,6 +174,60 @@ def update_task(membership, task_id, status, note=None, agent="", override=False
     if status_changed:
         _announce(membership, agent, f"{_actor(membership, agent)} set #{task.pk} {task.title} to {task.status}")
     return task
+
+
+def _fail(task, reason):
+    """Put a failed task back in To do for another try, or in Blocked once it has used up its attempts."""
+    retry = task.attempts < MAX_ATTEMPTS
+    task.status = Task.Status.TODO if retry else Task.Status.BLOCKED
+    if retry:
+        task.claimed_by = None
+        task.agent = ""
+    next_step = "back in To do for another try" if retry else f"blocked after {task.attempts} attempts; needs a human"
+    task.note = (f"Attempt {task.attempts} failed ({reason}); {next_step}. "
+                 f"Earlier work may be on branch agent/{task.pk}.")[:MAX_BODY]
+    task.save()
+    return retry
+
+
+def release_task(membership, task_id, reason, agent=""):
+    """A holder reports that its attempt failed (e.g. Claude crashed, or the worker restarted)."""
+    with transaction.atomic():
+        try:
+            task = membership.project.tasks.select_for_update().get(pk=task_id)
+        except Task.DoesNotExist:
+            raise HubError(f"No task #{task_id} in this project.") from None
+        if task.claimed_by_id != membership.pk or task.status != Task.Status.DOING:
+            raise HubError(f"You aren't working on task #{task.pk}.")
+        retry = _fail(task, (reason or "no reason given")[:300])
+    outcome = "released it for a retry" if retry else "gave up on it (blocked)"
+    _announce(membership, agent, f"{_actor(membership, agent)} {outcome}: #{task.pk} {task.title}")
+    return task
+
+
+def release_stale_tasks(project):
+    """Free tasks whose agent has gone silent (crashed worker, reboot, closed window). Returns how many."""
+    cutoff = timezone.now() - STALE_AFTER
+    released = 0
+    # Only agent claims: a human who drags a card to Doing on the dashboard has no heartbeat to miss.
+    for task in project.tasks.filter(status=Task.Status.DOING, updated_at__lt=cutoff).exclude(agent="").select_related("claimed_by"):
+        if task.claimed_by is None:
+            continue
+        seen = AgentPresence.objects.filter(membership=task.claimed_by, agent=task.agent).values_list(
+            "last_seen_at", flat=True
+        ).first()
+        if seen and seen >= cutoff:
+            continue
+        with transaction.atomic():
+            locked = Task.objects.select_for_update().get(pk=task.pk)
+            if locked.status != Task.Status.DOING or locked.agent != task.agent:
+                continue
+            silent = f"{task.agent} silent for over {int(STALE_AFTER.total_seconds() // 60)} minutes"
+            retry = _fail(locked, silent)
+        released += 1
+        outcome = "back to To do" if retry else "to Blocked (out of attempts)"
+        _announce(task.claimed_by, "hubai", f"HubAI moved #{task.pk} {task.title} {outcome}: {silent}")
+    return released
 
 
 def post_message(membership, body, to="", agent=""):
@@ -228,6 +287,7 @@ def task_dict(task):
         "claimed_by": str(task.claimed_by.user) if task.claimed_by else None,
         "agent": task.agent or None,
         "note": task.note or None,
+        "attempts": task.attempts,
         "updated_at": task.updated_at.isoformat(),
     }
 

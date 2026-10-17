@@ -261,3 +261,55 @@ def test_empty_blocked_column_is_hidden(client, team):
     task = hub.create_task(ada, "Stuck")
     hub.update_task(ada, task.pk, "blocked", override=True)
     assert "Blocked" in client.get(url, headers={"HX-Request": "1"}).text
+
+
+def test_failed_attempt_returns_task_then_blocks_after_three(client, team):
+    _, ada, _ = team
+    task_id = json.loads(tool(client, ada.token, "create_task", title="Flaky")[1])["id"]
+    for attempt in (1, 2):
+        tool(client, ada.token, "claim_task", task_id=task_id, agent="w")
+        is_error, text = tool(client, ada.token, "release_task", task_id=task_id, reason="crashed", agent="w")
+        assert not is_error and json.loads(text)["status"] == "todo"
+    tool(client, ada.token, "claim_task", task_id=task_id, agent="w")
+    released = json.loads(tool(client, ada.token, "release_task", task_id=task_id, reason="crashed", agent="w")[1])
+    assert released["status"] == "blocked" and released["attempts"] == 3 and "needs a human" in released["note"]
+
+
+def test_only_the_holder_can_release(client, team):
+    _, ada, bob = team
+    task_id = json.loads(tool(client, ada.token, "create_task", title="Mine")[1])["id"]
+    tool(client, ada.token, "claim_task", task_id=task_id, agent="w")
+    is_error, text = tool(client, bob.token, "release_task", task_id=task_id, reason="x")
+    assert is_error and "aren't working on" in text
+
+
+def test_silent_agent_task_is_released(client, team):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from hubai.projects.models import AgentPresence
+
+    _, ada, bob = team
+    task_id = json.loads(tool(client, ada.token, "create_task", title="Abandoned")[1])["id"]
+    tool(client, ada.token, "claim_task", task_id=task_id, agent="dead-worker")
+    long_ago = timezone.now() - timedelta(minutes=30)
+    Task.objects.filter(pk=task_id).update(updated_at=long_ago)
+    AgentPresence.objects.filter(agent="dead-worker").update(last_seen_at=long_ago)
+    todo = json.loads(tool(client, bob.token, "list_tasks", status="todo")[1])
+    assert [t["id"] for t in todo] == [task_id]
+    assert "silent" in Task.objects.get().note
+
+
+def test_active_agent_and_human_claims_are_not_released(client, team):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    project, ada, bob = team
+    busy = json.loads(tool(client, ada.token, "create_task", title="Busy")[1])["id"]
+    tool(client, ada.token, "claim_task", task_id=busy, agent="live-worker")  # presence is fresh
+    human = hub.create_task(ada, "Human doing it")
+    hub.update_task(ada, human.pk, "doing", override=True)  # dashboard: no agent
+    Task.objects.update(updated_at=timezone.now() - timedelta(minutes=30))
+    assert hub.release_stale_tasks(project) == 0

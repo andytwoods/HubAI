@@ -96,6 +96,7 @@ class Task(models.Model):
     )
     agent = models.CharField(max_length=60, blank=True, help_text="Which agent of the claimer is on it")
     note = models.TextField(blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0, help_text="How many times it has been claimed")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
