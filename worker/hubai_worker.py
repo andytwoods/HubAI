@@ -46,6 +46,10 @@ class HubAIError(Exception):
     pass
 
 
+class HubAIUnavailable(HubAIError):
+    """Server down or restarting (5xx, network error). Worth retrying."""
+
+
 class HubAI:
     def __init__(self, url, token, agent):
         self.url = url
@@ -76,7 +80,11 @@ class HubAI:
             with urllib.request.urlopen(request, timeout=30) as response:
                 reply = json.load(response)
         except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                raise HubAIUnavailable(f"HubAI returned HTTP {exc.code} (restarting?)") from exc
             raise HubAIError(f"HTTP {exc.code} from HubAI: {exc.read()[:200]!r}") from exc
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            raise HubAIUnavailable(f"Can't reach HubAI: {exc}") from exc
         if "error" in reply:
             raise HubAIError(reply["error"]["message"])
         result = reply["result"]
@@ -120,7 +128,14 @@ def work_on(hub, task, args):
 
 def watch(hub, args):
     log.info("Watching %s as %r every %ss. Ctrl+C to stop.", hub.url, hub.agent, args.interval)
-    hub.call("whoami")
+    while True:
+        try:
+            me = hub.call("whoami")
+            break
+        except HubAIUnavailable as exc:
+            log.warning("%s; retrying in 15s", exc)
+            time.sleep(15)
+    log.info("Connected as %s in project %r", me["you"], me["project"])
     while True:
         try:
             todo = hub.call("list_tasks", status="todo")
@@ -134,8 +149,8 @@ def watch(hub, args):
             if claimed:
                 work_on(hub, claimed, args)
                 continue
-        except (HubAIError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            log.warning("HubAI not reachable: %s", exc)
+        except (HubAIUnavailable, json.JSONDecodeError) as exc:
+            log.warning("%s; will retry", exc)
         if args.once:
             return
         time.sleep(args.interval)
