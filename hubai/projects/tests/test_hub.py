@@ -182,3 +182,15 @@ def test_dashboard_posts_task_and_message(client, team):
     task.refresh_from_db()
     assert task.status == "doing" and task.claimed_by == ada
     assert project.messages.filter(is_event=False).get().body == "hello"
+
+
+def test_tool_calls_record_agent_presence_shown_on_dashboard(client, team):
+    project, ada, _ = team
+    tool(client, ada.token, "list_tasks", agent="workpc-worker")
+    tool(client, ada.token, "read_inbox", agent="workpc-worker")
+    rpc(client, ada.token, "tools/list")
+    presence = ada.agents.get()
+    assert (presence.agent, presence.last_tool, presence.calls) == ("workpc-worker", "read_inbox", 2)
+    client.force_login(ada.user)
+    text = client.get(reverse("projects:detail", args=[project.pk]), headers={"HX-Request": "1"}).text
+    assert "workpc-worker" in text and "1 active" in text

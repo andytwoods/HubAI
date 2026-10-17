@@ -243,6 +243,8 @@ def mcp_endpoint(request):
             args = params.get("arguments") or {}
             if not isinstance(args, dict):
                 return rpc_error(msg_id, -32602, "'arguments' must be an object")
+            agent = args.get("agent") if isinstance(args.get("agent"), str) else ""
+            hub.touch(membership, agent, name if isinstance(name, str) else "")
             try:
                 result = call_tool(membership, name, args)
             except KeyError as exc:

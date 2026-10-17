@@ -15,6 +15,7 @@ from .forms import ProjectForm
 from .forms import TaskForm
 from .forms import TaskStatusForm
 from .helpers import hub
+from .models import AgentPresence
 from .models import Membership
 from .models import Task
 
@@ -50,6 +51,7 @@ def _membership(request, pk):
 
 def _live_context(membership):
     project = membership.project
+    active_since = timezone.now() - timedelta(minutes=10)
     tasks = project.tasks.select_related("claimed_by__user")
     columns = [(value, label, [t for t in tasks if t.status == value]) for value, label in Task.Status.choices]
     return {
@@ -58,7 +60,11 @@ def _live_context(membership):
         "columns": columns,
         "chat": list(hub.visible_messages(membership).order_by("-id")[:50]),
         "members": project.memberships.select_related("user"),
-        "active_since": timezone.now() - timedelta(minutes=10),
+        "active_since": active_since,
+        "agents": AgentPresence.objects.filter(membership__project=project).select_related("membership__user"),
+        "online_count": AgentPresence.objects.filter(
+            membership__project=project, last_seen_at__gte=active_since
+        ).count(),
         "status_choices": Task.Status.choices,
     }
 

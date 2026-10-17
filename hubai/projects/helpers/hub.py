@@ -5,6 +5,9 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from django.db.models import F
+
+from hubai.projects.models import AgentPresence
 from hubai.projects.models import InboxCursor
 from hubai.projects.models import Membership
 from hubai.projects.models import Message
@@ -44,8 +47,23 @@ def join_project(user, join_code):
     return project
 
 
-def touch(membership):
-    Membership.objects.filter(pk=membership.pk).update(last_seen_at=timezone.now())
+def touch(membership, agent="", tool=""):
+    now = timezone.now()
+    Membership.objects.filter(pk=membership.pk).update(last_seen_at=now)
+    if not tool:
+        return
+    agent = agent[:60] or DEFAULT_AGENT
+    updated = AgentPresence.objects.filter(membership=membership, agent=agent).update(
+        last_seen_at=now, last_tool=tool[:40], calls=F("calls") + 1
+    )
+    if not updated:
+        try:
+            with transaction.atomic():
+                AgentPresence.objects.create(
+                    membership=membership, agent=agent, last_seen_at=now, last_tool=tool[:40], calls=1
+                )
+        except IntegrityError:
+            pass  # a concurrent first call created it
 
 
 def find_member(project, who):

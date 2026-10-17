@@ -48,6 +48,23 @@ class Membership(models.Model):
         return f"{self.user} in {self.project}"
 
 
+class AgentPresence(models.Model):
+    """One row per named agent per member: lets the dashboard show which agents are connected."""
+
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name="agents")
+    agent = models.CharField(max_length=60)
+    last_seen_at = models.DateTimeField()
+    last_tool = models.CharField(max_length=40, blank=True)
+    calls = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["membership", "agent"], name="unique_agent_presence")]
+        ordering = ["-last_seen_at"]
+
+    def __str__(self):
+        return f"{self.agent} ({self.membership.user})"
+
+
 class InboxCursor(models.Model):
     """How far one named agent has read. Agents sharing a token each keep their own place."""
 

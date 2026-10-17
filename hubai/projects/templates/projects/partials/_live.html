@@ -33,6 +33,16 @@
         <span class="tag {% if m.last_seen_at and m.last_seen_at > active_since %}is-success is-light{% endif %}" title="{% if m.last_seen_at %}agent last active {{ m.last_seen_at|timesince }} ago{% else %}no agent connected yet{% endif %}">{{ m.user }}</span>
       {% endfor %}
     </div>
+    <h2 class="title is-6 mt-4">Agents <span class="tag is-rounded {% if online_count %}is-success{% endif %}">{{ online_count }} active</span></h2>
+    {% for a in agents %}
+      <p class="is-size-7 {% if a.last_seen_at < active_since %}has-text-grey-light{% endif %}">
+        <span aria-hidden="true">{% if a.last_seen_at >= active_since %}🟢{% else %}⚪{% endif %}</span>
+        <strong>{{ a.agent }}</strong> ({{ a.membership.user }}) · {{ a.last_tool }} {{ a.last_seen_at|timesince }} ago · {{ a.calls }} calls
+      </p>
+    {% empty %}
+      <p class="is-size-7 has-text-grey">No agent has called a tool yet. Connect one from "Connect your AI agent" above.</p>
+    {% endfor %}
+    <p class="is-size-7 has-text-grey mt-1">Active = used a tool in the last 10 minutes.</p>
     <h2 class="title is-6 mt-4">Messages</h2>
     <div class="chat">
       {% for msg in chat %}
