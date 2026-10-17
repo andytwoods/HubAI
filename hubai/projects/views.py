@@ -1,11 +1,16 @@
 from django.contrib import messages
 from datetime import timedelta
 
+import hashlib
+
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -84,14 +89,26 @@ def _live_context(membership):
     }
 
 
+def _live_html(request, membership):
+    """The board partial plus a fingerprint of it, so the 3s poll can say "nothing new" (see detail)."""
+    html = render_to_string("projects/partials/_live.html", _live_context(membership), request)
+    digest = hashlib.sha256(html.encode()).hexdigest()[:16]
+    return html + f'<span id="board-hash" data-hash="{digest}" hidden></span>', digest
+
+
 @login_required
 def detail(request, pk):
     membership = _membership(request, pk)
-    context = _live_context(membership)
     if request.headers.get("HX-Request"):
-        return render(request, "projects/partials/_live.html", context)
+        html, digest = _live_html(request, membership)
+        # Unchanged since the client's last swap: 204 makes htmx leave the page alone, so nothing flickers.
+        if request.GET.get("h") == digest:
+            return HttpResponse(status=204)
+        return HttpResponse(html)
+    context = _live_context(membership)
     mcp_url = request.build_absolute_uri(reverse("projects:mcp"))
-    context |= {"mcp_url": mcp_url, "task_form": TaskForm(), "message_form": MessageForm()}
+    context |= {"mcp_url": mcp_url, "task_form": TaskForm(), "message_form": MessageForm(),
+                "live": mark_safe(_live_html(request, membership)[0])}
     return render(request, "projects/detail.html", context)
 
 
@@ -104,7 +121,7 @@ def _too_fast(request):
 
 def _respond(request, membership):
     if request.headers.get("HX-Request"):
-        return render(request, "projects/partials/_live.html", _live_context(membership))
+        return HttpResponse(_live_html(request, membership)[0])
     return redirect("projects:detail", pk=membership.project_id)
 
 

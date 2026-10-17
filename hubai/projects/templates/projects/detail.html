@@ -102,8 +102,9 @@ uv run hubai_worker.py --repo ~/path/to/your-repo --agent "$(hostname -s)-worker
 </div>
 <div id="modal"></div>
 <div id="board-view" data-reorder-url="{% url 'projects:task_reorder' project.pk %}">
-  <div id="live" hx-get="{% url 'projects:detail' project.pk %}" hx-trigger="every 3s [!document.querySelector('#live select:focus') && !document.body.classList.contains('is-dragging')]" hx-swap="innerHTML">
-    {% include "projects/partials/_live.html" %}
+  <div id="live" hx-get="{% url 'projects:detail' project.pk %}" hx-trigger="every 3s [!document.querySelector('#live select:focus') && !document.body.classList.contains('is-dragging')]" hx-swap="innerHTML"
+       hx-vals='js:{h: (document.getElementById("board-hash") || {dataset: {}}).dataset.hash || ""}'>
+    {{ live }}
   </div>
 </div>
 {% endblock content %}

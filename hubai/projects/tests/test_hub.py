@@ -416,3 +416,16 @@ def test_agents_can_set_priority(client, team):
     board = client.get(reverse("projects:detail", args=[project.pk]), headers={"HX-Request": "1"}).text
     assert board.count("low priority") == 2 and board.count("high priority") == 2
     assert [t.title for t in project.tasks.all()] == ["three", "urgent", "one", "someday", "two"]
+
+
+def test_unchanged_board_poll_returns_no_content(client, team):
+    project, ada, _ = team
+    client.force_login(ada.user)
+    url = reverse("projects:detail", args=[project.pk])
+    page = client.get(url).text
+    digest = page.split('id="board-hash" data-hash="')[1][:16]
+    assert client.get(url, {"h": digest}, headers={"HX-Request": "1"}).status_code == 204
+    assert client.get(url, {"h": "stale"}, headers={"HX-Request": "1"}).status_code == 200
+    hub.create_task(ada, "Something new")
+    fresh = client.get(url, {"h": digest}, headers={"HX-Request": "1"})
+    assert fresh.status_code == 200 and "Something new" in fresh.text and digest not in fresh.text
