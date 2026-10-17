@@ -10,9 +10,14 @@ Every --interval seconds it asks HubAI for 'todo' tasks (a plain HTTP call, no A
 exists it claims it atomically, then runs `claude -p` in --repo to do it. By default it only takes tasks
 created by the token's own account (see --trust): Claude runs shell commands, so task text is code. When Claude exits it checks the
 task: if Claude didn't mark it done or blocked, the watcher marks it blocked so it doesn't sit in 'doing'.
+
+A powerful machine can run several tasks at once: --parallel 3 runs three workers named <agent>-1, -2, -3.
+Each extra one gets its own git worktree next to --repo (<repo>-hubai-2, ...), so they never share files.
+The watcher tells Claude how to reach HubAI itself (--mcp-config), so the repo needs no MCP setup.
 """
 
 import argparse
+import copy
 import json
 import logging
 import os
@@ -138,8 +143,16 @@ def run_claude(claude, claude_args, prompt, repo, timeout, log_path):
     return completed.returncode
 
 
+def free_branch(repo):
+    """A worktree keeps the last task's branch checked out, and git refuses to check a branch out twice.
+    Detach before the next task so a retry in another slot can take that branch over."""
+    subprocess.run(["git", "-C", repo, "checkout", "--detach", "-q"], check=False, capture_output=True)
+
+
 def work_on(hub, task, args):
     log.info("Claimed #%s %s", task["id"], task["title"])
+    if args.worktree:
+        free_branch(args.repo)
     prompt = PROMPT.format(
         agent=hub.agent,
         id=task["id"],
@@ -153,7 +166,8 @@ def work_on(hub, task, args):
     beat = threading.Thread(target=heartbeat, args=(hub, stop), daemon=True)
     beat.start()
     try:
-        exit_code = run_claude(args.claude, args.claude_args.split(), prompt, args.repo, args.task_timeout, log_path)
+        claude_args = [*args.claude_args.split(), "--mcp-config", args.mcp_config]
+        exit_code = run_claude(args.claude, claude_args, prompt, args.repo, args.task_timeout, log_path)
     finally:
         stop.set()
 
@@ -245,6 +259,10 @@ def parse_args(argv):
         action="store_true",
         help="Take tasks from any project member. Risky: Claude runs shell commands from task text.",
     )
+    parser.add_argument(
+        "--parallel", type=int, default=1, metavar="N",
+        help="Run N workers at once, named <agent>-1..N, each in its own git worktree beside --repo (default 1)",
+    )
     parser.add_argument("--log-dir", default=str(Path.home() / ".hubai-worker"), help="Per-task Claude logs")
     parser.add_argument("--once", action="store_true", help="Check the board once, then exit")
     args = parser.parse_args(argv)
@@ -255,16 +273,73 @@ def parse_args(argv):
         parser.error("--url must be https (the token is sent with every request)")
     if not Path(args.repo).is_dir():
         parser.error(f"--repo {args.repo} is not a directory (replace any <placeholder> with the real path)")
+    if args.parallel < 1:
+        parser.error("--parallel must be at least 1")
     return args
+
+
+def write_mcp_config(log_dir, agent, url, token):
+    """Claude learns about HubAI from this file rather than from per-repo settings, so worktrees work unchanged."""
+    path = Path(log_dir) / f"mcp-{agent}.json"
+    config = {"mcpServers": {"hubai": {"type": "http", "url": url, "headers": {"Authorization": f"Bearer {token}"}}}}
+    path.write_text(json.dumps(config), encoding="utf-8")
+    if os.name != "nt":
+        path.chmod(0o600)  # it holds the token
+    return str(path)
+
+
+def ensure_worktree(repo, number):
+    """A sibling checkout for worker slot `number`, created on first use."""
+    repo = Path(repo).resolve()
+    path = repo.parent / f"{repo.name}-hubai-{number}"
+    if not path.is_dir():
+        subprocess.run(["git", "-C", str(repo), "worktree", "prune"], check=False, capture_output=True)
+        result = subprocess.run(
+            ["git", "-C", str(repo), "worktree", "add", "--detach", str(path)], capture_output=True, text=True
+        )
+        if result.returncode:
+            raise HubAIError(f"Couldn't create worktree {path}: {result.stderr.strip()}")
+        log.info("Created worktree %s for worker %s", path, number)
+    return str(path)
+
+
+def slot_args(args, number):
+    """Settings for one of --parallel workers: its own name, repo checkout and MCP config."""
+    slot = copy.copy(args)
+    slot.worktree = number > 1
+    if args.parallel > 1:
+        slot.agent = f"{args.agent}-{number}"
+        if slot.worktree:
+            slot.repo = ensure_worktree(args.repo, number)
+    slot.mcp_config = write_mcp_config(args.log_dir, slot.agent, args.url, args.token)
+    return slot
+
+
+def run_slot(args):
+    threading.current_thread().name = args.agent
+    try:
+        watch(HubAI(args.url, args.token, args.agent), args)
+    except HubAIError as exc:
+        log.error("%s", exc)
 
 
 def main(argv=None):
     args = parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
+    fmt = "%(asctime)s [%(threadName)s] %(message)s" if args.parallel > 1 else "%(asctime)s %(message)s"
+    logging.basicConfig(level=logging.INFO, format=fmt, datefmt="%H:%M:%S")
     Path(args.log_dir).mkdir(parents=True, exist_ok=True)
-    hub = HubAI(args.url, args.token, args.agent)
     try:
-        watch(hub, args)
+        slots = [slot_args(args, n) for n in range(1, args.parallel + 1)]
+        if len(slots) == 1:
+            threading.current_thread().name = slots[0].agent
+            watch(HubAI(args.url, args.token, slots[0].agent), slots[0])
+            return 0
+        threads = [threading.Thread(target=run_slot, args=(slot,), name=slot.agent, daemon=True) for slot in slots]
+        for thread in threads:
+            thread.start()
+        while any(t.is_alive() for t in threads):
+            for thread in threads:
+                thread.join(timeout=0.5)
     except KeyboardInterrupt:
         log.info("Stopped.")
     except HubAIError as exc:

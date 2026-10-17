@@ -46,7 +46,10 @@ setups; WSL2 avoids that), and that `git push --dry-run` works. On Windows, run 
 rather than over SSH, since SSH sessions can't read saved GitHub credentials; a logon scheduled task
 (`schtasks /create /tn "HubAI worker" /tr "%USERPROFILE%\hubai-worker.cmd" /sc onlogon /it`) keeps it running after reboots.
 
-The repo must already have the `hubai` MCP server added to Claude Code (step 3 above). By default Claude runs with
+A powerful machine can run several tasks at once: `--parallel 3` runs three workers (`workpc-worker-1`, `-2`, `-3`).
+Each extra one works in its own git worktree beside the repo (`your-repo-hubai-2`, ...), created on first use, so
+they never share files. The watcher passes HubAI's address and your token to Claude itself (`--mcp-config`), so the
+repo needs no MCP setup for the worker. By default Claude runs with
 `--permission-mode acceptEdits --allowedTools Bash,mcp__hubai__update_task,mcp__hubai__post_message`, meaning it can edit files and run any shell command
 in that repo without asking. Only run the watcher on a machine and repo you're happy to hand over to an agent.
 Because task text effectively becomes shell commands, the watcher only takes tasks created by the token's own account,

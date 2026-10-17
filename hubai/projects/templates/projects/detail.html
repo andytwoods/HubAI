@@ -39,12 +39,11 @@ Post a message (post_message) when you change something others depend on (APIs, 
 <details class="box">
   <summary class="has-text-weight-semibold">Turn a spare computer into a worker</summary>
   <p class="mt-3">The watcher checks this board every 5 seconds (no AI tokens while idle). When a task is waiting it claims it
-    and runs Claude Code in your repo to do it, then picks up the next one. Set up the repo first: clone it, and add the
-    Claude Code command from "Connect your AI agent" inside it.</p>
+    and runs Claude Code in your repo to do it, then picks up the next one. Clone the repo on that machine first.</p>
   <p class="mt-3"><strong>Check the machine first:</strong></p>
   <ol class="mt-1">
     <li>The repo's own tests pass there. Native Windows often fails Unix-style test setups; WSL2 avoids that.</li>
-    <li>Claude Code is logged in, and the repo has the HubAI command from "Connect your AI agent" added.</li>
+    <li>Claude Code is logged in. The watcher tells Claude how to reach HubAI itself, so the repo needs no MCP setup.</li>
     <li>Git can push: <code>git push --dry-run</code> works (e.g. after <code>gh auth login</code> and <code>gh auth setup-git</code>).</li>
     <li>On Windows, run the watcher from your desktop session, not over SSH: SSH sessions can't read saved GitHub logins.</li>
   </ol>
@@ -60,7 +59,9 @@ uv run hubai_worker.py --repo "$HOME\PycharmProjects\your-repo" --agent "$($env:
   <pre class="cmd" data-copy>curl -o hubai_worker.py https://raw.githubusercontent.com/andytwoods/HubAI/main/worker/hubai_worker.py
 export HUBAI_TOKEN="{{ membership.token }}"
 uv run hubai_worker.py --repo ~/path/to/your-repo --agent "$(hostname -s)-worker"</pre>
-  <p class="mt-3">Change the <code>--repo</code> path to your repo. Leave the window open; each task's log goes to
+  <p class="mt-3">Change the <code>--repo</code> path to your repo. A powerful machine can take several tasks at once:
+    add <code>--parallel 3</code> and three workers run side by side, each in its own git worktree next to the repo
+    (<code>your-repo-hubai-2</code>, …), created on first use. Leave the window open; each task's log goes to
     <code>~/.hubai-worker/task-&lt;id&gt;.log</code>. More options: <code>uv run hubai_worker.py --help</code>, or see the
     <a href="https://github.com/andytwoods/HubAI#worker-pcs-the-watcher">README</a>.</p>
   <p class="mt-3"><strong>Keep it running after a reboot (Windows):</strong> save the three lines above as
