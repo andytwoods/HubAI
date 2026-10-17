@@ -3,6 +3,7 @@
 {% block content %}
 {% load static %}
 <script src="{% static 'js/copy.js' %}" defer></script>
+<script src="{% static 'js/idiomorph-ext.min.js' %}" defer></script>
 <script src="{% static 'js/board-view.js' %}" defer></script>
 <script src="{% static 'js/board-drag.js' %}" defer></script>
 <div class="level">
@@ -70,7 +71,7 @@ uv run hubai_worker.py --repo ~/path/to/your-repo --agent "$(hostname -s)-worker
 
 <div class="columns">
   <div class="column is-8">
-    <form class="box" hx-post="{% url 'projects:task_create' project.pk %}" hx-target="#live"
+    <form class="box" hx-post="{% url 'projects:task_create' project.pk %}" hx-target="#live" hx-ext="morph" hx-swap="morph:innerHTML"
           hx-on::after-request="if(event.detail.successful) this.reset()">
       <div class="field has-addons">
         <div class="control is-expanded">
@@ -81,7 +82,7 @@ uv run hubai_worker.py --repo ~/path/to/your-repo --agent "$(hostname -s)-worker
     </form>
   </div>
   <div class="column is-4">
-    <form class="box" hx-post="{% url 'projects:message_create' project.pk %}" hx-target="#live"
+    <form class="box" hx-post="{% url 'projects:message_create' project.pk %}" hx-target="#live" hx-ext="morph" hx-swap="morph:innerHTML"
           hx-on::after-request="if(event.detail.successful) this.reset()">
       <div class="field has-addons">
         <div class="control is-expanded"><input class="input" name="body" placeholder="Message everyone" required></div>
@@ -102,7 +103,7 @@ uv run hubai_worker.py --repo ~/path/to/your-repo --agent "$(hostname -s)-worker
 </div>
 <div id="modal"></div>
 <div id="board-view" data-reorder-url="{% url 'projects:task_reorder' project.pk %}">
-  <div id="live" hx-get="{% url 'projects:detail' project.pk %}" hx-trigger="every 3s [!document.querySelector('#live select:focus') && !document.body.classList.contains('is-dragging')]" hx-swap="innerHTML"
+  <div id="live" hx-get="{% url 'projects:detail' project.pk %}" hx-trigger="every 3s [!document.querySelector('#live select:focus') && !document.body.classList.contains('is-dragging')]" hx-ext="morph" hx-swap="morph:innerHTML"
        hx-vals='js:{h: (document.getElementById("board-hash") || {dataset: {}}).dataset.hash || ""}'>
     {{ live }}
   </div>

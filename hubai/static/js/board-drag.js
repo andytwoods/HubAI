@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!dragged || !column) return;
     e.preventDefault();
     const ids = [...column.querySelectorAll(".task-card")].map((c) => c.dataset.taskId).join(",");
-    htmx.ajax("POST", url, { target: "#live", swap: "innerHTML", values: { status: column.dataset.status, ids } });
+    htmx.ajax("POST", url, { target: "#live", swap: "morph:innerHTML", values: { status: column.dataset.status, ids } });
   });
 
   live.addEventListener("dragend", () => {

@@ -1,5 +1,6 @@
 // Per-column views (full / compact / titles only) and minimised columns, remembered per browser.
-// Classes are reapplied after every HTMX swap of #live, since the swap replaces the columns.
+// Classes are reapplied right after every HTMX swap of #live (before the browser paints), since the swap
+// brings the server's plain markup back.
 // The "all columns" buttons above the board set every column at once.
 // Also closes the task modal (#modal lives outside #live, so it survives the refresh).
 document.addEventListener("DOMContentLoaded", () => {
@@ -28,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
   apply();
-  document.body.addEventListener("htmx:afterSettle", (e) => { if (e.target === live) apply(); });
+  document.body.addEventListener("htmx:afterSwap", (e) => { if (e.target === live) apply(); });
 
   live.addEventListener("click", (e) => {
     const column = e.target.closest("[data-column]");
