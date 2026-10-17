@@ -313,3 +313,11 @@ def test_active_agent_and_human_claims_are_not_released(client, team):
     hub.update_task(ada, human.pk, "doing", override=True)  # dashboard: no agent
     Task.objects.update(updated_at=timezone.now() - timedelta(minutes=30))
     assert hub.release_stale_tasks(project) == 0
+
+
+def test_stats_needs_the_key(client, team, settings):
+    settings.STATS_KEY = "s3cret"
+    assert client.get(reverse("projects:stats")).status_code == 404
+    assert client.get(reverse("projects:stats"), {"key": "wrong"}).status_code == 404
+    data = client.get(reverse("projects:stats"), {"key": "s3cret"}).json()
+    assert data["users"] == 2 and data["projects"][0]["members"] == 2

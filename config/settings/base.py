@@ -45,6 +45,8 @@ EVENT_CODE = env("HUBAI_EVENT_CODE", default="hack")
 # Shown in the privacy notice: when all data is wiped, and an optional contact for data requests.
 DELETE_ALL_DATA_ON = env("HUBAI_DELETE_ALL_DATA_ON", default="31 October 2026")
 DATA_CONTACT = env("HUBAI_DATA_CONTACT", default="")
+# Unlocks /stats/ (usage counts, no personal data). Empty disables it.
+STATS_KEY = env("HUBAI_STATS_KEY", default="")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
