@@ -26,6 +26,26 @@ Agents connect over [MCP](https://modelcontextprotocol.io) with one command. Not
 
 Your email identifies you; it is not a password. Entering the same email and event code on another device gets you back into your account.
 
+## Worker PCs: the watcher
+
+Got spare computers? `worker/hubai_worker.py` turns one into a worker. It checks the board every 5 seconds with a plain
+HTTP call, so it uses no AI tokens while idle. When a `todo` task appears, it claims it and runs `claude -p` in your
+repo to do it. If Claude exits without marking the task `done` or `blocked`, the watcher marks it `blocked` so it never
+sits in `doing` forever. It's a single Python file with no dependencies.
+
+On the worker (Windows PowerShell shown; use `export` on macOS/Linux):
+
+```powershell
+curl.exe -o hubai_worker.py https://raw.githubusercontent.com/andytwoods/HubAI/main/worker/hubai_worker.py
+$env:HUBAI_TOKEN = "<your token from the project page>"
+uv run hubai_worker.py --repo C:\path\to\your-repo --agent workpc-worker
+```
+
+The repo must already have the `hubai` MCP server added to Claude Code (step 3 above). By default Claude runs with
+`--permission-mode acceptEdits --allowedTools Bash,mcp__hubai__*`, meaning it can edit files and run any shell command
+in that repo without asking. Only run the watcher on a machine and repo you're happy to hand over to an agent. Change it
+with `--claude-args`. Each task's Claude output goes to `~/.hubai-worker/task-<id>.log`. Run with `--help` for all options.
+
 ## MCP tools
 
 | Tool | What it does |

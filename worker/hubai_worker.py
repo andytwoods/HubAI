@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+"""HubAI worker watcher: polls the board cheaply and only starts Claude Code when there is work.
+
+Stdlib only, runs on Windows, macOS and Linux. Typical use, from anywhere:
+
+    python hubai_worker.py --repo C:\\Users\\me\\PycharmProjects\\open-survey-platform --agent workpc-worker
+
+The token comes from --token or the HUBAI_TOKEN environment variable (copy it from your project page).
+Every --interval seconds it asks HubAI for 'todo' tasks (a plain HTTP call, no AI tokens used). When one
+exists it claims it atomically, then runs `claude -p` in --repo to do it. When Claude exits it checks the
+task: if Claude didn't mark it done or blocked, the watcher marks it blocked so it doesn't sit in 'doing'.
+"""
+
+import argparse
+import json
+import logging
+import os
+import shutil
+import socket
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+DEFAULT_URL = "https://hubai.applikuapp.com/mcp/"
+DEFAULT_CLAUDE_ARGS = "--permission-mode acceptEdits --allowedTools Bash,mcp__hubai__*"
+
+PROMPT = """You are HubAI worker agent "{agent}". Always pass agent="{agent}" to HubAI tools.
+You already hold HubAI task #{id} (it is claimed for you; do not claim it again):
+
+Title: {title}
+Description: {description}
+
+Do the task in this repository, following AGENTS.md, CLAUDE.md and CLAUDE.local.md if present.
+After each major step, call update_task(task_id={id}, status="doing", note="<short progress>").
+When finished, push your work and call update_task(task_id={id}, status="done", note="<branch and test result>").
+If you cannot finish, call update_task(task_id={id}, status="blocked", note="<why>") and post_message the lead.
+Check read_inbox between steps for instructions from the lead."""
+
+log = logging.getLogger("hubai_worker")
+
+
+class HubAIError(Exception):
+    pass
+
+
+class HubAI:
+    def __init__(self, url, token, agent):
+        self.url = url
+        self.token = token
+        self.agent = agent
+        self._id = 0
+
+    def call(self, tool, **arguments):
+        self._id += 1
+        body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": self._id,
+                "method": "tools/call",
+                "params": {"name": tool, "arguments": {**arguments, "agent": self.agent}},
+            }
+        ).encode()
+        request = urllib.request.Request(
+            self.url,
+            data=body,
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                reply = json.load(response)
+        except urllib.error.HTTPError as exc:
+            raise HubAIError(f"HTTP {exc.code} from HubAI: {exc.read()[:200]!r}") from exc
+        if "error" in reply:
+            raise HubAIError(reply["error"]["message"])
+        result = reply["result"]
+        text = result["content"][0]["text"]
+        if result.get("isError"):
+            raise HubAIError(text)
+        return json.loads(text)
+
+
+def run_claude(claude, claude_args, prompt, repo, timeout, log_path):
+    command = [claude, "-p", prompt, *claude_args]
+    log.info("Starting Claude in %s (log: %s)", repo, log_path)
+    with open(log_path, "w", encoding="utf-8") as out:
+        try:
+            completed = subprocess.run(
+                command, cwd=repo, stdout=out, stderr=subprocess.STDOUT, timeout=timeout, check=False
+            )
+        except subprocess.TimeoutExpired:
+            log.warning("Claude ran longer than %ss and was stopped", timeout)
+            return None
+    return completed.returncode
+
+
+def work_on(hub, task, args):
+    log.info("Claimed #%s %s", task["id"], task["title"])
+    prompt = PROMPT.format(
+        agent=hub.agent, id=task["id"], title=task["title"], description=task.get("description") or "(none)"
+    )
+    log_path = Path(args.log_dir) / f"task-{task['id']}.log"
+    exit_code = run_claude(args.claude, args.claude_args.split(), prompt, args.repo, args.task_timeout, log_path)
+
+    after = next((t for t in hub.call("list_tasks") if t["id"] == task["id"]), None)
+    if after is None or after["status"] in ("done", "blocked", "todo"):
+        log.info("Task #%s finished as %s", task["id"], after["status"] if after else "deleted")
+        return
+    reason = "timed out" if exit_code is None else f"exited with code {exit_code}"
+    note = f"Worker {hub.agent}: Claude {reason} without marking the task done. See {log_path} on that machine."
+    hub.call("update_task", task_id=task["id"], status="blocked", note=note)
+    log.warning("Task #%s left in 'doing'; marked blocked (%s)", task["id"], reason)
+
+
+def watch(hub, args):
+    log.info("Watching %s as %r every %ss. Ctrl+C to stop.", hub.url, hub.agent, args.interval)
+    hub.call("whoami")
+    while True:
+        try:
+            todo = hub.call("list_tasks", status="todo")
+            claimed = None
+            for task in todo:
+                try:
+                    claimed = hub.call("claim_task", task_id=task["id"])
+                    break
+                except HubAIError as exc:
+                    log.info("Couldn't claim #%s: %s", task["id"], exc)  # another worker got it first
+            if claimed:
+                work_on(hub, claimed, args)
+                continue
+        except (HubAIError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            log.warning("HubAI not reachable: %s", exc)
+        if args.once:
+            return
+        time.sleep(args.interval)
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--repo", required=True, help="Repository Claude should work in")
+    parser.add_argument("--agent", default=f"{socket.gethostname().lower()}-worker", help="Name shown on the board")
+    parser.add_argument("--token", default=os.environ.get("HUBAI_TOKEN"), help="Or set HUBAI_TOKEN")
+    parser.add_argument("--url", default=os.environ.get("HUBAI_URL", DEFAULT_URL))
+    parser.add_argument("--interval", type=float, default=5, help="Seconds between board checks (default 5)")
+    parser.add_argument("--task-timeout", type=int, default=3 * 60 * 60, help="Max seconds per task (default 3h)")
+    parser.add_argument("--claude", default=shutil.which("claude") or "claude", help="Path to the claude CLI")
+    parser.add_argument(
+        "--claude-args",
+        default=DEFAULT_CLAUDE_ARGS,
+        help=f'Extra args for claude -p (default: "{DEFAULT_CLAUDE_ARGS}")',
+    )
+    parser.add_argument("--log-dir", default=str(Path.home() / ".hubai-worker"), help="Per-task Claude logs")
+    parser.add_argument("--once", action="store_true", help="Check the board once, then exit")
+    args = parser.parse_args(argv)
+    if not args.token:
+        parser.error("no token: pass --token or set HUBAI_TOKEN")
+    if not Path(args.repo).is_dir():
+        parser.error(f"--repo {args.repo} is not a directory")
+    return args
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
+    Path(args.log_dir).mkdir(parents=True, exist_ok=True)
+    hub = HubAI(args.url, args.token, args.agent)
+    try:
+        watch(hub, args)
+    except KeyboardInterrupt:
+        log.info("Stopped.")
+    except HubAIError as exc:
+        log.error("%s", exc)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
