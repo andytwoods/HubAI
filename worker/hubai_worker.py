@@ -111,12 +111,22 @@ class HubAI:
 
 
 def run_claude(claude, claude_args, prompt, repo, timeout, log_path):
-    command = [claude, "-p", prompt, *claude_args]
+    # The prompt holds task text written by other people, so it goes on stdin, never in argv: on Windows an
+    # npm-installed `claude.cmd` runs via cmd.exe, which lets `"` and `&` in an argument break out as commands.
+    command = [claude, "-p", *claude_args]
     log.info("Starting Claude in %s (log: %s)", repo, log_path)
     with open(log_path, "w", encoding="utf-8") as out:
         try:
             completed = subprocess.run(
-                command, cwd=repo, stdout=out, stderr=subprocess.STDOUT, timeout=timeout, check=False
+                command,
+                cwd=repo,
+                input=prompt,
+                text=True,
+                encoding="utf-8",
+                stdout=out,
+                stderr=subprocess.STDOUT,
+                timeout=timeout,
+                check=False,
             )
         except subprocess.TimeoutExpired:
             log.warning("Claude ran longer than %ss and was stopped", timeout)
