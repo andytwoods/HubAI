@@ -7,6 +7,8 @@ No SSE stream is offered, so GET returns 405 as the spec allows.
 import json
 import logging
 
+from urllib.parse import urlsplit
+
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -21,20 +23,25 @@ PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"]
 
 INSTRUCTIONS = (
     "HubAI is a shared task board and message channel for a hackathon team's AI agents and humans. "
+    "Always pass the same short `agent` name (e.g. 'claude-backend') so teammates can tell agents apart "
+    "and you keep your own place in the inbox. "
     "Before starting work: call read_inbox and list_tasks. Claim a task with claim_task before working on it, "
     "so no one duplicates it. When you finish or get stuck, call update_task. Use post_message to tell the team "
     "what you changed (files, endpoints, decisions others depend on). Check read_inbox between steps."
 )
 
 AGENT_PROP = {
-    "agent": {"type": "string", "description": "Short name for you, e.g. 'claude-backend'. Shown to the team."}
+    "agent": {
+        "type": "string",
+        "description": "Short name for you, e.g. 'claude-backend'. Use the same one every call.",
+    }
 }
 
 TOOLS = [
     {
         "name": "whoami",
         "description": "Your identity, the project you're in, and how many unread messages you have.",
-        "inputSchema": {"type": "object", "properties": {}},
+        "inputSchema": {"type": "object", "properties": {**AGENT_PROP}},
     },
     {
         "name": "list_members",
@@ -76,6 +83,7 @@ TOOLS = [
                 "task_id": {"type": "integer"},
                 "status": {"type": "string", "enum": Task.Status.values},
                 "note": {"type": "string"},
+                **AGENT_PROP,
             },
             "required": ["task_id", "status"],
         },
@@ -87,7 +95,7 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "body": {"type": "string"},
-                "to": {"type": "string", "description": "Email or name. Omit to message everyone."},
+                "to": {"type": "string", "description": "Email or name for a direct message. Omit for everyone."},
                 **AGENT_PROP,
             },
             "required": ["body"],
@@ -95,20 +103,39 @@ TOOLS = [
     },
     {
         "name": "read_inbox",
-        "description": "New messages from others since you last checked. Each message is returned once.",
-        "inputSchema": {"type": "object", "properties": {}},
+        "description": (
+            "New messages and board events (claims, status changes) since you last checked, oldest first, "
+            "up to 50. Each is returned once per agent name; call again if you got 50."
+        ),
+        "inputSchema": {"type": "object", "properties": {**AGENT_PROP}},
     },
 ]
 
 
+def _str(args, key, default=""):
+    value = args.get(key, default)
+    if not isinstance(value, str):
+        raise ValueError(f"'{key}' must be a string.")
+    return value
+
+
+def _int(args, key):
+    value = args[key]
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        raise ValueError(f"'{key}' must be an integer.")
+    return int(value)
+
+
 def call_tool(membership, name, args):
+    agent = _str(args, "agent")
     match name:
         case "whoami":
             return {
                 "you": str(membership.user),
                 "email": membership.user.email,
+                "agent": agent or hub.DEFAULT_AGENT,
                 "project": membership.project.name,
-                "unread_messages": hub.unread_count(membership),
+                "unread_messages": hub.unread_count(membership, agent),
             }
         case "list_members":
             return [
@@ -121,20 +148,21 @@ def call_tool(membership, name, args):
             ]
         case "list_tasks":
             tasks = membership.project.tasks.select_related("claimed_by__user")
-            if args.get("status"):
-                tasks = tasks.filter(status=args["status"])
+            if status := _str(args, "status"):
+                tasks = tasks.filter(status=status)
             return [hub.task_dict(t) for t in tasks]
         case "create_task":
-            return hub.task_dict(hub.create_task(membership, args["title"], args.get("description", "")))
+            return hub.task_dict(hub.create_task(membership, _str(args, "title"), _str(args, "description")))
         case "claim_task":
-            return hub.task_dict(hub.claim_task(membership, int(args["task_id"]), args.get("agent", "")))
+            return hub.task_dict(hub.claim_task(membership, _int(args, "task_id"), agent))
         case "update_task":
-            return hub.task_dict(hub.update_task(membership, int(args["task_id"]), args["status"], args.get("note")))
+            note = _str(args, "note") if "note" in args else None
+            task = hub.update_task(membership, _int(args, "task_id"), _str(args, "status"), note, agent)
+            return hub.task_dict(task)
         case "post_message":
-            message = hub.post_message(membership, args["body"], args.get("to", ""), args.get("agent", ""))
-            return hub.message_dict(message)
+            return hub.message_dict(hub.post_message(membership, _str(args, "body"), _str(args, "to"), agent))
         case "read_inbox":
-            return [hub.message_dict(m) for m in hub.read_inbox(membership)]
+            return [hub.message_dict(m) for m in hub.read_inbox(membership, agent)]
     raise KeyError(name)
 
 
@@ -155,10 +183,21 @@ def authenticate(request):
     )
 
 
+def origin_allowed(request):
+    """Spec: reject browser requests from other sites (DNS rebinding). CLIs send no Origin header."""
+    origin = request.headers.get("Origin")
+    return origin is None or urlsplit(origin).netloc == request.get_host()
+
+
 @csrf_exempt
 def mcp_endpoint(request):
     if request.method != "POST":
         return HttpResponse(status=405, headers={"Allow": "POST"})
+    if not origin_allowed(request):
+        return HttpResponse("Origin not allowed", status=403)
+    version = request.headers.get("MCP-Protocol-Version")
+    if version and version not in PROTOCOL_VERSIONS:
+        return rpc_error(None, -32600, f"Unsupported MCP-Protocol-Version {version}", 400)
 
     membership = authenticate(request)
     if membership is None:
@@ -168,12 +207,14 @@ def mcp_endpoint(request):
         msg = json.loads(request.body)
     except json.JSONDecodeError:
         return rpc_error(None, -32700, "Parse error", 400)
-    if not isinstance(msg, dict) or "method" not in msg:
-        return rpc_error(None, -32600, "Expected a single JSON-RPC request", 400)
+    if not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0" or not isinstance(msg.get("method"), str):
+        return rpc_error(None, -32600, "Expected a single JSON-RPC 2.0 request", 400)
 
     method = msg["method"]
     msg_id = msg.get("id")
     params = msg.get("params") or {}
+    if not isinstance(params, dict) or isinstance(msg_id, (bool, dict, list)):
+        return rpc_error(msg_id if isinstance(msg_id, (str, int)) else None, -32600, "Invalid request", 400)
 
     if "id" not in msg:
         # Notifications (e.g. notifications/initialized) need no reply.
@@ -200,6 +241,8 @@ def mcp_endpoint(request):
         case "tools/call":
             name = params.get("name", "")
             args = params.get("arguments") or {}
+            if not isinstance(args, dict):
+                return rpc_error(msg_id, -32602, "'arguments' must be an object")
             try:
                 result = call_tool(membership, name, args)
             except KeyError as exc:

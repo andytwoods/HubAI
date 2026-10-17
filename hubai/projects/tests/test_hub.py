@@ -84,19 +84,80 @@ def test_mcp_task_claiming_is_exclusive(client, team):
     task_id = json.loads(text)["id"]
     assert not tool(client, ada.token, "claim_task", task_id=task_id, agent="claude-1")[0]
     is_error, text = tool(client, bob.token, "claim_task", task_id=task_id)
-    assert is_error and "already doing by Ada" in text
-    tool(client, ada.token, "update_task", task_id=task_id, status="done", note="shipped")
+    assert is_error and "already doing by Ada (claude-1)" in text
+    is_error, text = tool(client, bob.token, "update_task", task_id=task_id, status="done")
+    assert is_error and "held by Ada" in text
+    tool(client, ada.token, "update_task", task_id=task_id, status="done", note="shipped", agent="claude-1")
     assert Task.objects.get().status == "done"
+
+
+def test_mcp_doing_without_claim_is_refused(client, team):
+    _, ada, _ = team
+    task_id = json.loads(tool(client, ada.token, "create_task", title="X")[1])["id"]
+    is_error, text = tool(client, ada.token, "update_task", task_id=task_id, status="doing")
+    assert is_error and "claim_task" in text
+
+
+def test_board_events_reach_other_agents(client, team):
+    _, ada, bob = team
+    task_id = json.loads(tool(client, ada.token, "create_task", title="Login")[1])["id"]
+    tool(client, ada.token, "claim_task", task_id=task_id, agent="claude-1")
+    inbox = json.loads(tool(client, bob.token, "read_inbox", agent="gemini")[1])
+    assert inbox[0]["type"] == "board_event" and "claimed #" in inbox[0]["body"]
+    assert json.loads(tool(client, ada.token, "read_inbox", agent="claude-1")[1]) == []
 
 
 def test_mcp_messages_reach_inbox_once(client, team):
     _, ada, bob = team
     tool(client, ada.token, "post_message", body="API is at /api/v1", agent="claude-1")
-    tool(client, ada.token, "post_message", body="psst bob", to="Bob")
+    tool(client, ada.token, "post_message", body="psst bob", to="Bob", agent="claude-1")
     _, text = tool(client, bob.token, "read_inbox")
     assert [m["body"] for m in json.loads(text)] == ["API is at /api/v1", "psst bob"]
     assert json.loads(tool(client, bob.token, "read_inbox")[1]) == []
-    assert json.loads(tool(client, ada.token, "read_inbox")[1]) == []
+    assert json.loads(tool(client, ada.token, "read_inbox", agent="claude-1")[1]) == []
+
+
+def test_agents_sharing_a_token_each_get_every_message(client, team):
+    _, ada, bob = team
+    tool(client, ada.token, "post_message", body="hello", to="everyone")
+    for agent in ("claude-1", "claude-2"):
+        assert [m["body"] for m in json.loads(tool(client, bob.token, "read_inbox", agent=agent)[1])] == ["hello"]
+
+
+def test_humans_dashboard_message_reaches_own_agent(client, team):
+    project, ada, _ = team
+    client.force_login(ada.user)
+    client.post(reverse("projects:message_create", args=[project.pk]), {"body": "focus on auth"})
+    inbox = json.loads(tool(client, ada.token, "read_inbox", agent="claude-1")[1])
+    assert [m["body"] for m in inbox] == ["focus on auth"]
+
+
+def test_ambiguous_name_is_refused(team):
+    project, ada, bob = team
+    bob.user.name = "Ada"
+    bob.user.save()
+    with pytest.raises(hub.HubError, match="email"):
+        hub.post_message(ada, "hi", to="ada")
+
+
+def test_bad_arguments_are_tool_errors_not_500s(client, team):
+    _, ada, _ = team
+    assert tool(client, ada.token, "claim_task", task_id="abc")[0]
+    assert tool(client, ada.token, "post_message", body=["x"])[0]
+    assert tool(client, ada.token, "claim_task")[0]
+    response = rpc(client, ada.token, "tools/call", {"name": "list_tasks", "arguments": "x"})
+    assert response.json()["error"]["code"] == -32602
+    assert rpc(client, ada.token, "tools/list", params=None).status_code == 200
+
+
+def test_cross_site_origin_is_rejected(client, team):
+    _, ada, _ = team
+    response = client.post(
+        reverse("projects:mcp"), json.dumps({"jsonrpc": "2.0", "id": 1, "method": "ping"}),
+        content_type="application/json",
+        headers={"Authorization": f"Bearer {ada.token}", "Origin": "https://evil.example"},
+    )
+    assert response.status_code == 403
 
 
 def test_mcp_unknown_recipient_is_tool_error(client, team):
@@ -120,4 +181,4 @@ def test_dashboard_posts_task_and_message(client, team):
     client.post(reverse("projects:task_status", args=[project.pk, task.pk]), {"status": "doing"})
     task.refresh_from_db()
     assert task.status == "doing" and task.claimed_by == ada
-    assert project.messages.get().body == "hello"
+    assert project.messages.filter(is_event=False).get().body == "hello"

@@ -1,9 +1,12 @@
 from django.contrib import messages
+from datetime import timedelta
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import JoinForm
@@ -55,6 +58,7 @@ def _live_context(membership):
         "columns": columns,
         "chat": list(hub.visible_messages(membership).order_by("-id")[:50]),
         "members": project.memberships.select_related("user"),
+        "active_since": timezone.now() - timedelta(minutes=10),
         "status_choices": Task.Status.choices,
     }
 
@@ -94,7 +98,10 @@ def task_status(request, pk, task_id):
     membership = _membership(request, pk)
     form = TaskStatusForm(request.POST)
     if form.is_valid():
-        hub.update_task(membership, task_id, form.cleaned_data["status"])
+        try:
+            hub.update_task(membership, task_id, form.cleaned_data["status"], override=True)
+        except hub.HubError as exc:
+            messages.error(request, str(exc))
     return _respond(request, membership)
 
 

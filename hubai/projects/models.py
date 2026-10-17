@@ -10,7 +10,8 @@ JOIN_WORDS = [
 
 
 def generate_join_code():
-    return f"{secrets.choice(JOIN_WORDS).upper()}-{secrets.randbelow(9000) + 1000}"
+    first, second = secrets.choice(JOIN_WORDS), secrets.choice(JOIN_WORDS)
+    return f"{first.upper()}-{second.upper()}-{secrets.randbelow(9000) + 1000}"
 
 
 def generate_token():
@@ -36,8 +37,6 @@ class Membership(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="memberships")
     token = models.CharField(max_length=64, unique=True, default=generate_token)
-    # Highest message id this member's agents have already been handed by read_inbox.
-    inbox_cursor = models.PositiveBigIntegerField(default=0)
     last_seen_at = models.DateTimeField(null=True, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
 
@@ -47,6 +46,20 @@ class Membership(models.Model):
 
     def __str__(self):
         return f"{self.user} in {self.project}"
+
+
+class InboxCursor(models.Model):
+    """How far one named agent has read. Agents sharing a token each keep their own place."""
+
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name="inbox_cursors")
+    agent = models.CharField(max_length=60)
+    last_id = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["membership", "agent"], name="unique_inbox_cursor")]
+
+    def __str__(self):
+        return f"{self.membership} / {self.agent} @ {self.last_id}"
 
 
 class Task(models.Model):
@@ -86,6 +99,8 @@ class Message(models.Model):
         Membership, on_delete=models.CASCADE, null=True, blank=True, related_name="received_messages"
     )
     body = models.TextField()
+    # Posted by HubAI itself when the board changes, e.g. "Ada · claude-1 claimed #3".
+    is_event = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

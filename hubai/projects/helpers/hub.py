@@ -5,11 +5,18 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from hubai.projects.models import InboxCursor
 from hubai.projects.models import Membership
 from hubai.projects.models import Message
 from hubai.projects.models import Project
 from hubai.projects.models import Task
 from hubai.projects.models import generate_join_code
+
+
+BROADCAST_NAMES = {"", "everyone", "all", "team"}
+DEFAULT_AGENT = "agent"
+MAX_BODY = 4000
+INBOX_LIMIT = 50
 
 
 class HubError(Exception):
@@ -21,9 +28,9 @@ def create_project(user, name):
         try:
             with transaction.atomic():
                 project = Project.objects.create(name=name, join_code=generate_join_code(), created_by=user)
+                Membership.objects.create(project=project, user=user)
         except IntegrityError:
             continue
-        Membership.objects.create(project=project, user=user)
         return project
     raise HubError("Couldn't generate a unique join code, try again.")
 
@@ -44,9 +51,15 @@ def touch(membership):
 def find_member(project, who):
     """Resolve an email or display name to a membership in this project."""
     who = who.strip().lower()
-    for member in project.memberships.select_related("user"):
-        if who in (member.user.email.lower(), member.user.display_name.lower()):
-            return member
+    matches = [
+        member
+        for member in project.memberships.select_related("user")
+        if who in (member.user.email.lower(), member.user.display_name.lower())
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        raise HubError(f"More than one person is called '{who}'. Use their email instead.")
     raise HubError(f"No one called '{who}' in this project. Call list_members to see who is.")
 
 
@@ -66,6 +79,20 @@ def create_task(membership, title, description=""):
     )
 
 
+def _holder(task):
+    if not task.claimed_by:
+        return ""
+    return f" by {task.claimed_by.user}" + (f" ({task.agent})" if task.agent else "")
+
+
+def _announce(membership, agent, text):
+    Message.objects.create(project=membership.project, sender=membership, agent=agent[:60], body=text, is_event=True)
+
+
+def _actor(membership, agent):
+    return f"{membership.user}" + (f" · {agent}" if agent else "")
+
+
 def claim_task(membership, task_id, agent=""):
     """Atomically take a to-do task. Fails if someone else got there first."""
     task = get_task(membership.project, task_id)
@@ -74,24 +101,39 @@ def claim_task(membership, task_id, agent=""):
     )
     task.refresh_from_db()
     if not claimed:
-        holder = f" by {task.claimed_by.user}" if task.claimed_by else ""
-        raise HubError(f"Task #{task.pk} is already {task.get_status_display().lower()}{holder}.")
+        raise HubError(
+            f"Task #{task.pk} is already {task.get_status_display().lower()}{_holder(task)}. "
+            "Pick another task or post_message them."
+        )
+    _announce(membership, agent, f"{_actor(membership, agent)} claimed #{task.pk} {task.title}")
     return task
 
 
-def update_task(membership, task_id, status, note=None):
-    task = get_task(membership.project, task_id)
+def update_task(membership, task_id, status, note=None, agent="", override=False):
+    """Change a task's status. Agents may only change tasks they hold; humans on the dashboard can override."""
     if status not in Task.Status.values:
         raise HubError(f"Status must be one of: {', '.join(Task.Status.values)}.")
-    task.status = status
-    if status == Task.Status.TODO:
-        task.claimed_by = None
-        task.agent = ""
-    elif task.claimed_by is None:
-        task.claimed_by = membership
-    if note is not None:
-        task.note = note
-    task.save()
+    with transaction.atomic():
+        try:
+            task = membership.project.tasks.select_for_update().get(pk=task_id)
+        except Task.DoesNotExist:
+            raise HubError(f"No task #{task_id} in this project.") from None
+        if not override:
+            if task.claimed_by_id and task.claimed_by_id != membership.pk:
+                raise HubError(f"Task #{task.pk} is held{_holder(task)}. Ask them with post_message.")
+            if task.claimed_by_id is None and status == Task.Status.DOING:
+                raise HubError(f"Use claim_task to start task #{task.pk}.")
+        task.status = status
+        if status == Task.Status.TODO:
+            task.claimed_by = None
+            task.agent = ""
+        elif task.claimed_by is None:
+            task.claimed_by = membership
+            task.agent = agent[:60]
+        if note is not None:
+            task.note = note[:MAX_BODY]
+        task.save()
+    _announce(membership, agent, f"{_actor(membership, agent)} set #{task.pk} {task.title} to {task.status}")
     return task
 
 
@@ -99,7 +141,9 @@ def post_message(membership, body, to="", agent=""):
     body = body.strip()
     if not body:
         raise HubError("Message is empty.")
-    recipient = find_member(membership.project, to) if to else None
+    if len(body) > MAX_BODY:
+        raise HubError(f"Message is over {MAX_BODY} characters. Summarise, or put details in a file in the repo.")
+    recipient = None if to.strip().lower() in BROADCAST_NAMES else find_member(membership.project, to)
     return Message.objects.create(
         project=membership.project, sender=membership, agent=agent[:60], recipient=recipient, body=body
     )
@@ -116,19 +160,28 @@ def visible_messages(membership):
     )
 
 
-def read_inbox(membership):
-    """Messages from others since the last read, then move the read cursor past them."""
+def _unread(membership, agent, last_id):
+    # Everything except what this same agent posted, so a human's dashboard messages reach their own agents.
+    return visible_messages(membership).filter(id__gt=last_id).exclude(sender=membership, agent=agent)
+
+
+def read_inbox(membership, agent=""):
+    """Up to INBOX_LIMIT new messages for this agent, then move its read cursor past them."""
+    agent = agent[:60] or DEFAULT_AGENT
     with transaction.atomic():
-        member = Membership.objects.select_for_update().get(pk=membership.pk)
-        new = list(visible_messages(member).filter(id__gt=member.inbox_cursor).exclude(sender=member))
+        cursor, _ = InboxCursor.objects.get_or_create(membership=membership, agent=agent)
+        cursor = InboxCursor.objects.select_for_update().get(pk=cursor.pk)
+        new = list(_unread(membership, agent, cursor.last_id)[:INBOX_LIMIT])
         if new:
-            member.inbox_cursor = new[-1].id
-            member.save(update_fields=["inbox_cursor"])
+            cursor.last_id = new[-1].id
+            cursor.save(update_fields=["last_id"])
     return new
 
 
-def unread_count(membership):
-    return visible_messages(membership).filter(id__gt=membership.inbox_cursor).exclude(sender=membership).count()
+def unread_count(membership, agent=""):
+    agent = agent[:60] or DEFAULT_AGENT
+    cursor = InboxCursor.objects.filter(membership=membership, agent=agent).first()
+    return _unread(membership, agent, cursor.last_id if cursor else 0).count()
 
 
 def task_dict(task):
@@ -150,6 +203,7 @@ def message_dict(message):
         "from": str(message.sender.user) if message.sender else None,
         "agent": message.agent or None,
         "to": str(message.recipient.user) if message.recipient else "everyone",
+        "type": "board_event" if message.is_event else "message",
         "body": message.body,
         "at": message.created_at.isoformat(),
     }

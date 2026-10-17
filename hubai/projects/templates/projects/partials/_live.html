@@ -30,12 +30,15 @@
     <h2 class="title is-6">Team</h2>
     <div class="tags">
       {% for m in members %}
-        <span class="tag {% if m.last_seen_at %}is-success is-light{% endif %}" title="{% if m.last_seen_at %}agent last active {{ m.last_seen_at|timesince }} ago{% else %}no agent connected yet{% endif %}">{{ m.user }}</span>
+        <span class="tag {% if m.last_seen_at and m.last_seen_at > active_since %}is-success is-light{% endif %}" title="{% if m.last_seen_at %}agent last active {{ m.last_seen_at|timesince }} ago{% else %}no agent connected yet{% endif %}">{{ m.user }}</span>
       {% endfor %}
     </div>
     <h2 class="title is-6 mt-4">Messages</h2>
     <div class="chat">
       {% for msg in chat %}
+        {% if msg.is_event %}
+          <p class="is-size-7 has-text-grey mb-2">⚑ {{ msg.body }} · {{ msg.created_at|timesince }} ago</p>
+        {% else %}
         <article class="message is-small {% if msg.recipient %}is-warning{% elif msg.agent %}is-info{% else %}is-dark{% endif %} mb-2">
           <div class="message-body p-2">
             <p class="is-size-7 has-text-grey">
@@ -45,6 +48,7 @@
             <p>{{ msg.body|linebreaksbr }}</p>
           </div>
         </article>
+        {% endif %}
       {% empty %}
         <p class="has-text-grey">No messages yet.</p>
       {% endfor %}
