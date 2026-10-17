@@ -14,6 +14,6 @@ RUN uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
 COPY . .
 
 # Production settings so the whitenoise manifest storage is the one that runs.
-RUN DJANGO_SECRET_KEY=build-only DATABASE_URL=sqlite:////tmp/build.db python manage.py collectstatic --noinput
+RUN DJANGO_SECRET_KEY=build-only HUBAI_EVENT_CODE=build-only DATABASE_URL=sqlite:////tmp/build.db python manage.py collectstatic --noinput
 
 CMD ["sh", "run.sh"]

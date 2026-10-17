@@ -2,6 +2,8 @@ from .base import *  # noqa: F403
 from .base import env
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+# No default in production: the code in base.py is public in the repo.
+EVENT_CODE = env("HUBAI_EVENT_CODE")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # noqa: F405
