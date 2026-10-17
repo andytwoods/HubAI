@@ -88,7 +88,7 @@ def meter(d, x, y, pct, label="CPU"):
 def scene1(t):
     im = Image.new("RGB", (W, H), (255, 236, 228)); d = ImageDraw.Draw(im)
     jit = int(5 * math.sin(t * 70))
-    laptop(d, W/2 + jit, 430, 420, "sad", glow=(255, 200, 180))
+    laptop(d, W/2 - 60 + jit, 430, 420, "sad", glow=(255, 200, 180))
     meter(d, 90, 90, min(100, 70 + t * 40))
     meter(d, 90, 190, min(100, 80 + t * 30), "RAM")
     d.text((W - 90, 110), "agents: 8", font=f(B, 30), fill=INK, anchor="ra")
@@ -98,19 +98,19 @@ def scene1(t):
         x = W/2 - 260 + k * 170; y = 140 + ph * 260
         d.ellipse([x - 9, y - 14, x + 9, y + 10], fill=(90, 160, 255))
     for k in range(7):  # flames along the lid
-        fx = W/2 - 180 + k * 60; fh = 50 + 30 * math.sin(t * 14 + k * 1.7)
+        fx = W/2 - 240 + k * 60; fh = 50 + 30 * math.sin(t * 14 + k * 1.7)
         top = 430 - 420 * 0.62
         d.polygon([(fx - 26, top), (fx + 26, top), (fx, top - fh)], fill=(255, 140, 40))
         d.polygon([(fx - 13, top), (fx + 13, top), (fx, top - fh * 0.55)], fill=YELLOW)
     if t > 2.0:  # fan noise
-        d.text((W/2 + 260, 200), "WHIRRRRR", font=f(B, int(30 + 10 * math.sin(t * 20))), fill=RED, anchor="mm")
+        d.text((W/2 + 200, 200), "WHIRRRRR", font=f(B, int(30 + 10 * math.sin(t * 20))), fill=RED, anchor="mm")
     return im, d
 
 def scene2(t):
     im = Image.new("RGB", (W, H), (226, 230, 248)); d = ImageDraw.Draw(im)
-    tower(d, 380, 520, 200, "sleep", "Work PC")
-    tower(d, 900, 520, 200, "sleep", "Home PC")
-    for cx in (480, 1000):
+    tower(d, 300, 520, 200, "sleep", "Work PC")
+    tower(d, 720, 520, 200, "sleep", "Home PC")
+    for cx in (400, 820):
         for k in range(3):
             ph = (t * 0.7 + k * 0.33) % 1
             d.text((cx + ph * 70, 230 - ph * 120), "z", font=f(B, int(30 + 30 * ph)), fill=INDIGO)
@@ -119,8 +119,8 @@ def scene2(t):
 
 def scene3(t):
     im = Image.new("RGB", (W, H), BG); d = ImageDraw.Draw(im)
-    hub = (W/2, 210)
-    mac, work, home = (230, 430), (W/2, 525), (W - 230, 430)
+    hub = (W/2 - 120, 210)  # right ~330 px kept clear for the presenter circle
+    mac, work, home = (190, 430), (W/2 - 120, 525), (W/2 + 190, 430)
     for p in (mac, work, home): d.line([hub, p], fill=(150, 160, 230), width=5)
     d.ellipse([hub[0] - 60, hub[1] - 60, hub[0] + 60, hub[1] + 60], fill=YELLOW, outline=INDIGO, width=5)
     d.text((hub[0], hub[1]), "HubAI", font=f(B, 24), fill=INK, anchor="mm")
@@ -146,14 +146,14 @@ def scene3(t):
 def scene_fridge(t):
     im = Image.new("RGB", (W, H), (240, 242, 252)); d = ImageDraw.Draw(im)
     # Fridge
-    fx, fy = 380, 560
+    fx, fy = 280, 560
     d.rounded_rectangle([fx - 120, fy - 420, fx + 120, fy], radius=20, fill="white", outline=(170, 176, 210), width=4)
     d.line([fx - 120, fy - 290, fx + 120, fy - 290], fill=(170, 176, 210), width=4)
     d.rounded_rectangle([fx + 80, fy - 400, fx + 92, fy - 320], radius=5, fill=(170, 176, 210))
     face_on(d, fx, fy - 370, 30, "happy" if t > 0.5 else "sleep")
     d.text((fx, fy + 14), "Fridge", font=f(B, 22), fill=INK, anchor="ma")
     # Toaster
-    tx, ty = 880, 560
+    tx, ty = 700, 560
     d.rounded_rectangle([tx - 150, ty - 180, tx + 150, ty], radius=40, fill=(200, 205, 222), outline=(130, 136, 170), width=4)
     face_on(d, tx, ty - 95, 28, "happy" if t > 0.3 else "sleep")
     pop = ease((t - 0.9) / 0.35)
@@ -173,7 +173,7 @@ def scene4(t, icon):
     im.paste(ic, (W//2 - ic.width//2, 110), ic)
     d.text((W/2, 320), "HubAI", font=f(B, 84), fill=INK, anchor="ma")
     d.text((W/2, 425), "hubai.applikuapp.com", font=f(B, 40), fill=INDIGO, anchor="ma")
-    laptop(d, 230, 330, 150, "happy"); tower(d, 1050, 340, 90, "happy")
+    laptop(d, 230, 330, 150, "happy"); tower(d, 880, 250, 80, "happy")
     return im, d
 
 def main():
