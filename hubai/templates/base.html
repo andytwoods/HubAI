@@ -22,6 +22,9 @@
       </div>
     {% endif %}
   </nav>
+  <div class="notification is-warning is-light has-text-centered mb-0 py-3" role="note">
+    <strong>Experimental prototype.</strong> Login isn't secure: don't paste secrets, keys or private code.
+  </div>
   <main class="section">
     <div class="container">
       {% for message in messages %}
@@ -30,5 +33,15 @@
       {% block main %}{% block content %}{% endblock content %}{% endblock main %}
     </div>
   </main>
+  <footer class="footer py-5">
+    <div class="content has-text-centered is-size-7">
+      <p>
+        HubAI by Andy Woods ·
+        <a href="https://scholar.google.co.uk/citations?user=p5dUkQIAAAAJ&amp;hl=en" rel="noopener" target="_blank">Google Scholar</a> ·
+        <a href="https://andytwoods.github.io/django-for-behavioural-science/" rel="noopener" target="_blank">Django for Behavioural Science (tutorial)</a> ·
+        <a href="https://github.com/andytwoods/HubAI" rel="noopener" target="_blank">Source on GitHub</a> (MIT)
+      </p>
+    </div>
+  </footer>
 </body>
 </html>
