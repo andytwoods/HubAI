@@ -28,11 +28,11 @@ def stats(request):
         users.filter(date_joined__gte=day_ago).annotate(hour=TruncHour("date_joined")).values("hour")
         .annotate(n=Count("id")).order_by("hour")
     )
-    projects = Project.objects.annotate(members=Count("memberships"), tasks=Count("tasks", distinct=True))
+    projects = Project.objects.annotate(n_members=Count("memberships", distinct=True), n_tasks=Count("tasks", distinct=True))
     return JsonResponse({
         "users": users.count(),
         "signups_last_24h_by_hour": {s["hour"].strftime("%H:00"): s["n"] for s in signups},
-        "projects": [{"members": p.members, "tasks": p.tasks, "created": p.created_at.strftime("%d %b %H:%M")}
+        "projects": [{"members": p.n_members, "tasks": p.n_tasks, "created": p.created_at.strftime("%d %b %H:%M")}
                      for p in projects.order_by("created_at")],
         "agents_active_last_hour": AgentPresence.objects.filter(last_seen_at__gte=now - timedelta(hours=1)).count(),
         "tasks_by_status": dict(Task.objects.values_list("status").annotate(n=Count("id"))),
