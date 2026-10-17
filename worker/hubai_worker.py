@@ -161,7 +161,7 @@ def parse_args(argv):
     if not args.token:
         parser.error("no token: pass --token or set HUBAI_TOKEN")
     if not Path(args.repo).is_dir():
-        parser.error(f"--repo {args.repo} is not a directory")
+        parser.error(f"--repo {args.repo} is not a directory (replace any <placeholder> with the real path)")
     return args
 
 
