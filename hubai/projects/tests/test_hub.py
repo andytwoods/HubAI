@@ -251,3 +251,13 @@ def test_root_shows_landing_page_to_visitors(client):
     response = client.get(reverse("projects:home"))
     assert response.status_code == 200
     assert "How it works" in response.text and reverse("users:login") in response.text
+
+
+def test_empty_blocked_column_is_hidden(client, team):
+    project, ada, _ = team
+    client.force_login(ada.user)
+    url = reverse("projects:detail", args=[project.pk])
+    assert "Blocked" not in client.get(url, headers={"HX-Request": "1"}).text
+    task = hub.create_task(ada, "Stuck")
+    hub.update_task(ada, task.pk, "blocked", override=True)
+    assert "Blocked" in client.get(url, headers={"HX-Request": "1"}).text

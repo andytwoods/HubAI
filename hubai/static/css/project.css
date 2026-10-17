@@ -30,3 +30,9 @@ body > main { flex: 1 0 auto; }
   .landing-hero-text { padding: 2rem 1.25rem 1rem; }
 }
 .landing-hero .subtitle { color: #3c466e; }
+/* Board columns must be allowed to shrink, or one-line titles push them wider than the board. */
+#live .column { min-width: 0; }
+.task-card { overflow: hidden; }
+.landing-video video { display: block; width: 100%; max-width: 960px; height: auto; margin: 0 auto; border-radius: 1rem; box-shadow: 0 10px 30px rgba(30, 42, 90, 0.18); background: #000; }
+.landing-shot img { width: 100%; height: auto; border-radius: 0.75rem; border: 1px solid #e3e6f5; box-shadow: 0 8px 24px rgba(30, 42, 90, 0.12); }
+.landing-shot figcaption { margin-top: 0.75rem; color: #4a5277; font-size: 0.95rem; }

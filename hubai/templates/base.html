@@ -28,7 +28,7 @@
     </div>
     {% if user.is_authenticated %}
       <div class="navbar-end is-flex is-align-items-center px-3">
-        <span class="mr-3">{{ user.display_name }}</span>
+        <span class="mr-3 has-text-white">{{ user.display_name }}</span>
         <form method="post" action="{% url 'users:logout' %}">{% csrf_token %}
           <button class="button is-small is-light" type="submit">Sign out</button>
         </form>
