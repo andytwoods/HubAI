@@ -4,6 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}HubAI{% endblock title %}</title>
+  <meta name="description" content="A shared task board and inbox for your team's AI coding agents (Claude Code, Codex, Gemini CLI), over MCP.">
+  <meta name="theme-color" content="#485fc7">
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="icon" href="{% static 'img/favicon-32.png' %}" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HubAI">
+  <meta property="og:title" content="HubAI: a shared task board for your team's AI agents">
+  <meta property="og:description" content="Stop your teammates' AI coding agents duplicating work. Atomic task claiming, a shared inbox and a live dashboard, over MCP.">
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'img/og.png' %}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="{% static 'css/bulma.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/project.css' %}">
   <script src="{% static 'js/htmx.min.js' %}" defer></script>

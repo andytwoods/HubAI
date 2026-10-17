@@ -79,6 +79,9 @@ TEMPLATES = [
 
 ADMIN_URL = env("DJANGO_ADMIN_URL", default="admin/")
 
+# Rate limits need a cache shared by every uvicorn worker, so production uses the database cache.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

@@ -9,6 +9,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from hubai.ratelimit import hit
+
 from .forms import JoinForm
 from .forms import MessageForm
 from .forms import ProjectForm
@@ -27,12 +29,17 @@ def home(request):
     if request.method == "POST":
         if "new-name" in request.POST:
             project_form = ProjectForm(request.POST, prefix="new")
-            if project_form.is_valid():
+            if hit("new-project", request.user.pk, 10, 3600):
+                project_form.add_error(None, "You've created a lot of projects. Wait an hour.")
+            elif project_form.is_valid():
                 project = hub.create_project(request.user, project_form.cleaned_data["name"])
                 return redirect("projects:detail", pk=project.pk)
         else:
             join_form = JoinForm(request.POST, prefix="join")
-            if join_form.is_valid():
+            if hit("join", request.user.pk, 10, 600):
+                join_form.add_error(None, "Too many join attempts. Wait ten minutes.")
+                join_form.is_valid()
+            elif join_form.is_valid():
                 try:
                     project = hub.join_project(request.user, join_form.cleaned_data["join_code"])
                 except hub.HubError as exc:
@@ -80,6 +87,13 @@ def detail(request, pk):
     return render(request, "projects/detail.html", context)
 
 
+def _too_fast(request):
+    if hit("dashboard-post", request.user.pk, 30, 60):
+        messages.error(request, "Slow down: too many posts in a minute.")
+        return True
+    return False
+
+
 def _respond(request, membership):
     if request.headers.get("HX-Request"):
         return render(request, "projects/partials/_live.html", _live_context(membership))
@@ -91,7 +105,9 @@ def _respond(request, membership):
 def task_create(request, pk):
     membership = _membership(request, pk)
     form = TaskForm(request.POST)
-    if form.is_valid():
+    if _too_fast(request):
+        pass
+    elif form.is_valid():
         hub.create_task(membership, form.cleaned_data["title"], form.cleaned_data["description"])
     else:
         messages.error(request, "A task needs a title.")
@@ -116,6 +132,6 @@ def task_status(request, pk, task_id):
 def message_create(request, pk):
     membership = _membership(request, pk)
     form = MessageForm(request.POST)
-    if form.is_valid():
+    if not _too_fast(request) and form.is_valid():
         hub.post_message(membership, form.cleaned_data["body"])
     return _respond(request, membership)

@@ -33,3 +33,20 @@ def test_next_redirect_rejects_other_hosts(client):
     url = reverse("users:login") + "?next=https://evil.example/"
     response = client.post(url, {"email": "x@example.com", "event_code": "test-event"})
     assert response.url == reverse("projects:home")
+
+
+def test_login_attempts_are_rate_limited(client):
+    from django.core.cache import cache
+
+    cache.clear()
+    codes = [
+        client.post(reverse("users:login"), {"email": "x@example.com", "event_code": "wrong"}).status_code
+        for _ in range(12)
+    ]
+    assert codes[0] == 422 and codes[-1] == 429
+
+
+def test_pages_have_icons_and_link_preview(client):
+    text = client.get(reverse("users:login")).text
+    assert 'rel="icon"' in text and 'property="og:image" content="http://testserver/static/img/og.png"' in text
+    assert client.get("/favicon.ico").status_code == 301

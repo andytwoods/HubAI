@@ -48,7 +48,9 @@ rather than over SSH, since SSH sessions can't read saved GitHub credentials; a 
 
 The repo must already have the `hubai` MCP server added to Claude Code (step 3 above). By default Claude runs with
 `--permission-mode acceptEdits --allowedTools Bash,mcp__hubai__*`, meaning it can edit files and run any shell command
-in that repo without asking. Only run the watcher on a machine and repo you're happy to hand over to an agent. Change it
+in that repo without asking. Only run the watcher on a machine and repo you're happy to hand over to an agent.
+Because task text effectively becomes shell commands, the watcher only takes tasks created by the token's own account.
+Add teammates you trust with `--trust their@email` (repeatable); `--trust-anyone` turns the check off. Change it
 with `--claude-args`. Each task's Claude output goes to `~/.hubai-worker/task-<id>.log`. Run with `--help` for all options.
 
 ## MCP tools

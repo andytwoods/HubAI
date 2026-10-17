@@ -14,6 +14,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from hubai.projects.helpers import hub
+from hubai.ratelimit import client_ip
+from hubai.ratelimit import hit
 from hubai.projects.models import Membership
 from hubai.projects.models import Task
 
@@ -150,7 +152,7 @@ def call_tool(membership, name, args):
                 for m in membership.project.memberships.select_related("user")
             ]
         case "list_tasks":
-            tasks = membership.project.tasks.select_related("claimed_by__user")
+            tasks = membership.project.tasks.select_related("claimed_by__user", "created_by__user")
             if status := _str(args, "status"):
                 tasks = tasks.filter(status=status)
             return [hub.task_dict(t) for t in tasks]
@@ -204,7 +206,12 @@ def mcp_endpoint(request):
 
     membership = authenticate(request)
     if membership is None:
+        if hit("mcp-bad-token", client_ip(request), 30, 60):
+            return rpc_error(None, -32002, "Too many bad tokens. Wait a minute.", 429)
         return rpc_error(None, -32001, "Missing or invalid bearer token. Copy it from your project page.", 401)
+    # A worker polls ~12/min and a busy agent a few more; 240/min per member covers several agents sharing a token.
+    if hit("mcp", membership.pk, 240, 60):
+        return rpc_error(None, -32002, "Rate limit: too many HubAI calls this minute. Slow down.", 429)
 
     try:
         msg = json.loads(request.body)

@@ -204,3 +204,27 @@ def test_progress_note_updates_card_without_inbox_event(client, team):
     tool(client, ada.token, "update_task", task_id=task_id, status="doing", note="step 2/4: tests written", agent="w")
     assert Task.objects.get().note == "step 2/4: tests written"
     assert json.loads(tool(client, bob.token, "read_inbox")[1]) == []
+
+
+def test_list_tasks_reports_creator_email(client, team):
+    _, ada, bob = team
+    tool(client, bob.token, "create_task", title="From Bob")
+    tasks = json.loads(tool(client, ada.token, "list_tasks")[1])
+    assert tasks[0]["created_by"] == "bob@example.com"
+
+
+def test_mcp_rate_limits_per_member(client, team, settings):
+    from django.core.cache import cache
+
+    cache.clear()
+    _, ada, _ = team
+    codes = [rpc(client, ada.token, "ping").status_code for _ in range(245)]
+    assert codes.count(200) == 240 and codes[-1] == 429
+
+
+def test_bad_tokens_are_rate_limited(client):
+    from django.core.cache import cache
+
+    cache.clear()
+    codes = [rpc(client, "nope", "ping").status_code for _ in range(32)]
+    assert codes[0] == 401 and codes[-1] == 429

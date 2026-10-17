@@ -93,7 +93,7 @@ def create_task(membership, title, description=""):
     if not title:
         raise HubError("A task needs a title.")
     return Task.objects.create(
-        project=membership.project, title=title[:200], description=description, created_by=membership
+        project=membership.project, title=title[:200], description=description[:MAX_BODY], created_by=membership
     )
 
 
@@ -211,6 +211,7 @@ def task_dict(task):
         "title": task.title,
         "description": task.description,
         "status": task.status,
+        "created_by": task.created_by.user.email if task.created_by else None,
         "claimed_by": str(task.claimed_by.user) if task.claimed_by else None,
         "agent": task.agent or None,
         "note": task.note or None,

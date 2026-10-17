@@ -16,6 +16,7 @@
     <form method="post" class="box">
       {% csrf_token %}
       <h2 class="title is-5">Start a project</h2>
+      {% for error in project_form.non_field_errors %}<p class="help is-danger mb-2">{{ error }}</p>{% endfor %}
       {% include "users/partials/_field.html" with field=project_form.name %}
       <button class="button is-primary" type="submit">Create</button>
     </form>
@@ -24,6 +25,7 @@
     <form method="post" class="box">
       {% csrf_token %}
       <h2 class="title is-5">Join a project</h2>
+      {% for error in join_form.non_field_errors %}<p class="help is-danger mb-2">{{ error }}</p>{% endfor %}
       {% include "users/partials/_field.html" with field=join_form.join_code %}
       <button class="button is-link" type="submit">Join</button>
     </form>
