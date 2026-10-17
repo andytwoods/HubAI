@@ -7,7 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "django>=6.1.2",
     "django-environ>=0.14.0",
-    "psycopg[binary]>=3.3.6",
+    "psycopg[binary,pool]>=3.3.6",
     "uvicorn[standard]>=0.54.0",
     "whitenoise>=6.12.0",
 ]
