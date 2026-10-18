@@ -1,6 +1,9 @@
 .board-column { min-height: 8rem; }
 .chat { max-height: 32rem; overflow-y: auto; }
 .token { word-break: break-all; }
+/* Shared secrets (join code) are blurred until clicked, so a screen share or photo doesn't leak them. */
+.secret { filter: blur(6px); cursor: pointer; user-select: none; transition: filter 0.15s; }
+.secret.is-revealed { filter: none; cursor: text; user-select: text; }
 pre.cmd { white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; }
 .copy-button { margin: 0.25rem 0 0.5rem; }
 pre.cmd + .copy-button { display: block; }

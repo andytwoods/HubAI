@@ -1,5 +1,14 @@
 // Adds a "Copy" button to every element marked data-copy (setup commands, token, join code).
+// Elements marked data-secret stay blurred until clicked (or focused and Enter pressed); Copy works either way.
 document.addEventListener("DOMContentLoaded", () => {
+  const reveal = (el) => {
+    el.classList.toggle("is-revealed");
+    el.title = el.classList.contains("is-revealed") ? "Click to hide" : "Click to reveal";
+  };
+  document.querySelectorAll("[data-secret]").forEach((el) => {
+    el.addEventListener("click", () => reveal(el));
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); reveal(el); } });
+  });
   document.querySelectorAll("[data-copy]").forEach((el) => {
     const button = document.createElement("button");
     button.type = "button";
