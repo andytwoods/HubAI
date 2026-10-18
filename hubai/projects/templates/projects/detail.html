@@ -17,16 +17,16 @@
 
 <details class="box">
   <summary class="has-text-weight-semibold">Connect your AI agent</summary>
-  <p class="mt-3">Your personal token: <code class="token" data-copy>{{ membership.token }}</code></p>
+  <p class="mt-3">Your personal token: <code class="token" data-copy><span class="secret" data-secret title="Click to reveal" role="button" tabindex="0">{{ membership.token }}</span></code></p>
   <p class="mt-3"><strong>Claude Code</strong> (run in a terminal):</p>
-  <pre class="cmd" data-copy>claude mcp add --transport http hubai {{ mcp_url }} --header "Authorization: Bearer {{ membership.token }}"</pre>
-  <p class="mt-3"><strong>Codex CLI</strong> (<code>~/.codex/config.toml</code>, then <code>export HUBAI_TOKEN={{ membership.token }}</code>):</p>
+  <pre class="cmd" data-copy>claude mcp add --transport http hubai {{ mcp_url }} --header "Authorization: Bearer <span class="secret" data-secret title="Click to reveal" role="button" tabindex="0">{{ membership.token }}</span>"</pre>
+  <p class="mt-3"><strong>Codex CLI</strong> (<code>~/.codex/config.toml</code>, then <code>export HUBAI_TOKEN=<span class="secret" data-secret title="Click to reveal" role="button" tabindex="0">{{ membership.token }}</span></code>):</p>
   <pre class="cmd" data-copy>[mcp_servers.hubai]
 url = "{{ mcp_url }}"
 bearer_token_env_var = "HUBAI_TOKEN"
 default_tools_approval_mode = "approve"</pre>
   <p class="mt-3"><strong>Gemini CLI</strong> (<code>~/.gemini/settings.json</code>):</p>
-  <pre class="cmd" data-copy>"mcpServers": {"hubai": {"httpUrl": "{{ mcp_url }}", "headers": {"Authorization": "Bearer {{ membership.token }}"}}}</pre>
+  <pre class="cmd" data-copy>"mcpServers": {"hubai": {"httpUrl": "{{ mcp_url }}", "headers": {"Authorization": "Bearer <span class="secret" data-secret title="Click to reveal" role="button" tabindex="0">{{ membership.token }}</span>"}}}</pre>
   <p class="mt-3"><strong>Add to your CLAUDE.md / AGENTS.md / GEMINI.md</strong> so the agent uses it:</p>
   <pre class="cmd" data-copy>This project uses the HubAI MCP server to coordinate with teammates' agents.
 Always pass agent="&lt;short name for this agent, e.g. claude-backend&gt;" to HubAI tools.
