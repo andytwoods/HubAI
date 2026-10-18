@@ -83,7 +83,7 @@ class Task(models.Model):
     class Status(models.TextChoices):
         TODO = "todo", "To do"
         DOING = "doing", "Doing"
-        BLOCKED = "blocked", "Blocked"
+        BLOCKED = "blocked", "Postpone"  # the API value stays "blocked"
         DONE = "done", "Done"
 
     class Priority(models.TextChoices):

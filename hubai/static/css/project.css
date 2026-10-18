@@ -43,7 +43,7 @@ body > main { flex: 1 0 auto; }
 .chat.view-titles .msg-meta::after { content: ": "; }
 .chat.view-titles .msg-body br { display: none; }
 .chat.view-titles .msg-event { margin-bottom: 0.1rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* An empty Blocked column only shows while dragging, as a drop target for To do cards. */
+/* An empty Postpone column only shows while dragging, as a drop target for To do cards. */
 .column.is-empty-blocked { display: none; }
 body.is-dragging .column.is-empty-blocked { display: block; }
 .board-column.is-no-drop { outline: 2px dashed var(--bulma-danger, #f14668); outline-offset: 2px; border-radius: 6px; opacity: 0.6; }

@@ -26,7 +26,7 @@ MAX_BODY = 4000
 INBOX_LIMIT = 50
 MAX_AGENTS_PER_MEMBER = 20
 MAX_TASKS_PER_PROJECT = 500
-MAX_ATTEMPTS = 3  # after this many failed claims a task goes to Blocked for a human
+MAX_ATTEMPTS = 3  # after this many failed claims a task goes to Postpone for a human
 STALE_AFTER = timedelta(minutes=15)  # an agent this quiet while holding a task is presumed dead
 
 
@@ -163,7 +163,7 @@ def reorder_tasks(membership, task_ids, status=None):
                 continue
             if task.status == Task.Status.TODO and status != Task.Status.BLOCKED:
                 raise HubError(
-                    f"#{task.pk} is waiting for an agent to claim it; drag it to Blocked to park it, "
+                    f"#{task.pk} is waiting for an agent to claim it; drag it to Postpone to park it, "
                     "or use its dropdown to override."
                 )
             update_task(membership, task_id, status, override=True)
@@ -192,7 +192,7 @@ def claim_task(membership, task_id, agent=""):
     )
     task.refresh_from_db()
     if not claimed:
-        state = {"doing": "in progress", "blocked": "blocked", "done": "done"}.get(task.status, task.status)
+        state = {"doing": "in progress", "blocked": "postponed", "done": "done"}.get(task.status, task.status)
         raise HubError(f"Task #{task.pk} is already {state}{_holder(task)}. Pick another task or post_message them.")
     _announce(membership, agent, f"{_actor(membership, agent)} claimed #{task.pk} {task.title}")
     return task
@@ -258,13 +258,13 @@ def edit_task(membership, task_id, title, description, note, priority=None):
 
 
 def _fail(task, reason):
-    """Put a failed task back in To do for another try, or in Blocked once it has used up its attempts."""
+    """Put a failed task back in To do for another try, or in Postpone once it has used up its attempts."""
     retry = task.attempts < MAX_ATTEMPTS
     task.status = Task.Status.TODO if retry else Task.Status.BLOCKED
     if retry:
         task.claimed_by = None
         task.agent = ""
-    next_step = "back in To do for another try" if retry else f"blocked after {task.attempts} attempts; needs a human"
+    next_step = "back in To do for another try" if retry else f"postponed after {task.attempts} attempts; needs a human"
     task.note = (f"Attempt {task.attempts} failed ({reason}); {next_step}. "
                  f"Earlier work may be on branch agent/{task.pk}.")[:MAX_BODY]
     task.save()
@@ -281,7 +281,7 @@ def release_task(membership, task_id, reason, agent=""):
         if task.claimed_by_id != membership.pk or task.status != Task.Status.DOING:
             raise HubError(f"You aren't working on task #{task.pk}.")
         retry = _fail(task, (reason or "no reason given")[:300])
-    outcome = "released it for a retry" if retry else "gave up on it (blocked)"
+    outcome = "released it for a retry" if retry else "gave up on it (postponed)"
     _announce(membership, agent, f"{_actor(membership, agent)} {outcome}: #{task.pk} {task.title}")
     return task
 
@@ -306,7 +306,7 @@ def release_stale_tasks(project):
             silent = f"{task.agent} silent for over {int(STALE_AFTER.total_seconds() // 60)} minutes"
             retry = _fail(locked, silent)
         released += 1
-        outcome = "back to To do" if retry else "to Blocked (out of attempts)"
+        outcome = "back to To do" if retry else "to Postpone (out of attempts)"
         _announce(task.claimed_by, "hubai", f"HubAI moved #{task.pk} {task.title} {outcome}: {silent}")
     return released
 

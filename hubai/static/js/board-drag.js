@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const url = document.getElementById("board-view").dataset.reorderUrl;
   let dragged = null;
   let from = null;
-  // People reorder To do and can park a card in Blocked; moving it to Doing or Done is for the agent that claims it
+  // People reorder To do and can park a card in Postpone; moving it to Doing or Done is for the agent that claims it
   // (the status dropdown still allows a deliberate override).
   const allowed = (to) => from !== "todo" || to === "todo" || to === "blocked";
 

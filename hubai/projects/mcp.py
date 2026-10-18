@@ -108,7 +108,7 @@ TOOLS = [
         "name": "release_task",
         "description": (
             "Give up on a task you hold because your attempt failed. It goes back to To do for another try, "
-            "or to Blocked after 3 attempts."
+            "or to Postpone (status 'blocked') after 3 attempts."
         ),
         "inputSchema": {
             "type": "object",

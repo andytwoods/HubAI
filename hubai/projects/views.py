@@ -71,7 +71,7 @@ def _live_context(membership):
     project = membership.project
     active_since = timezone.now() - timedelta(minutes=10)
     tasks = project.tasks.select_related("claimed_by__user")
-    # All four columns are rendered; an empty Blocked one is hidden by CSS except while a card is being dragged,
+    # All four columns are rendered; an empty Postpone one is hidden by CSS except while a card is being dragged,
     # when it's the only place a To do card may be dropped besides its own column.
     columns = [(value, label, [t for t in tasks if t.status == value]) for value, label in Task.Status.choices]
     return {
