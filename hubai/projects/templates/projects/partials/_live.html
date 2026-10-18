@@ -33,6 +33,11 @@
               </div>
             {% endfor %}
           </div>
+          <form class="column-add" hx-post="{% url 'projects:task_create' project.pk %}" hx-target="#live"
+                hx-on::after-request="if(event.detail.successful) this.reset()">
+            <input type="hidden" name="status" value="{{ value }}">
+            <input class="input is-small" name="title" placeholder="+ Add a task" aria-label="Add a task to {{ label }}" required maxlength="200" autocomplete="off">
+          </form>
         </div>
       {% endfor %}
     </div>

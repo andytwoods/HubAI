@@ -4,6 +4,17 @@
 // brings the server's plain markup back.
 // The "all columns" buttons above the board set every column at once.
 // Also closes the task modal (#modal lives outside #live, so it survives the refresh).
+// The 3s poll (detail.html) skips a beat while the person is mid-interaction on the board: dragging a card,
+// choosing from a status dropdown, or half-way through typing a title, which a swap would otherwise wipe.
+// An empty, merely focused box doesn't count, so a cursor left in one doesn't freeze the board.
+window.boardBusy = () => {
+  if (document.body.classList.contains("is-dragging")) return true;
+  const live = document.getElementById("live");
+  const active = document.activeElement;
+  if (active && live.contains(active) && active.matches("select")) return true;
+  return [...live.querySelectorAll("input[name=title]")].some((input) => input.value !== "");
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   const KEY = "hubai-board-columns";
   const live = document.getElementById("live");

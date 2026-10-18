@@ -47,6 +47,11 @@ body > main { flex: 1 0 auto; }
 .column.is-empty-blocked { display: none; }
 body.is-dragging .column.is-empty-blocked { display: block; }
 .board-column.is-no-drop { outline: 2px dashed var(--bulma-danger, #f14668); outline-offset: 2px; border-radius: 6px; opacity: 0.6; }
+/* Inline "add a task" at the foot of each column. */
+.column-add { margin-top: 0.25rem; }
+.column-add .input { border-style: dashed; box-shadow: none; background: transparent; }
+.column-add .input:focus { border-style: solid; background: var(--bulma-scheme-main, #fff); }
+.is-collapsed .column-add { display: none; }
 /* Drag to reorder (see js/board-drag.js). */
 .task-card[draggable="true"] { cursor: grab; }
 .task-card.is-dragging { opacity: 0.4; cursor: grabbing; }

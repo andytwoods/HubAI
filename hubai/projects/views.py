@@ -133,7 +133,10 @@ def task_create(request, pk):
     if _too_fast(request):
         pass
     elif form.is_valid():
-        hub.create_task(membership, form.cleaned_data["title"], form.cleaned_data["description"])
+        task = hub.create_task(membership, form.cleaned_data["title"], form.cleaned_data["description"])
+        status = form.cleaned_data["status"]
+        if status and status != task.status:
+            hub.update_task(membership, task.pk, status, override=True)
     else:
         messages.error(request, "A task needs a title.")
     return _respond(request, membership)

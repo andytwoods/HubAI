@@ -438,3 +438,18 @@ def test_unchanged_board_poll_returns_no_content(client, team):
     hub.create_task(ada, "Something new")
     fresh = client.get(url, {"h": digest}, headers={"HX-Request": "1"})
     assert fresh.status_code == 200 and "Something new" in fresh.text and digest not in fresh.text
+
+
+def test_tasks_can_be_added_straight_into_a_column(client, team):
+    project, ada, _ = team
+    client.force_login(ada.user)
+    url = reverse("projects:task_create", args=[project.pk])
+    client.post(url, {"title": "Later", "status": "blocked"}, headers={"HX-Request": "1"})
+    client.post(url, {"title": "Now", "status": "doing"}, headers={"HX-Request": "1"})
+    client.post(url, {"title": "Plain"}, headers={"HX-Request": "1"})
+    by_title = {t.title: t for t in project.tasks.all()}
+    assert by_title["Later"].status == "blocked"
+    assert by_title["Now"].status == "doing" and by_title["Now"].claimed_by == ada
+    assert by_title["Plain"].status == "todo"
+    board = client.get(reverse("projects:detail", args=[project.pk]), headers={"HX-Request": "1"}).text
+    assert board.count('placeholder="+ Add a task"') == 4

@@ -14,6 +14,8 @@ class JoinForm(forms.Form):
 class TaskForm(forms.Form):
     title = forms.CharField(max_length=200)
     description = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), required=False)
+    # Which column it's added to; blank means To do.
+    status = forms.ChoiceField(choices=Task.Status.choices, required=False)
 
 
 class MessageForm(forms.Form):
