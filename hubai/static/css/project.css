@@ -5,9 +5,15 @@
 .secret { filter: blur(6px); cursor: pointer; user-select: none; transition: filter 0.15s; }
 .secret.is-revealed { filter: none; cursor: text; user-select: text; }
 pre.cmd { white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; }
-.copy-button { margin: 0.25rem 0 0.5rem; }
-pre.cmd + .copy-button { display: block; }
-.tag .copy-button { margin: 0 0 0 0.5rem; height: 1.6em; }
+/* Copy icons (see js/copy.js). Inline ones sit on the text line; command blocks get one in their corner. */
+.copy-button { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+  font-size: inherit; width: 1.35em; height: 1.35em; box-sizing: border-box; margin-left: 0.6em; padding: 0; border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px; background: rgba(255, 255, 255, 0.85); color: #4a4a4a; cursor: pointer; line-height: 1; }
+.copy-button:hover { background: #fff; color: #000; border-color: rgba(0, 0, 0, 0.3); }
+.copy-button.is-done { color: #257953; border-color: #48c78e; }
+.copy-wrap { position: relative; }
+.copy-wrap > .copy-button { position: absolute; top: 0.4rem; right: 0.4rem; margin: 0; width: 1.75rem; height: 1.75rem; }
+.copy-wrap > pre.cmd { padding-right: 2.75rem; }
 /* Sticky footer: footer sits at the bottom of the window when the page is short. */
 body { display: flex; flex-direction: column; min-height: 100vh; }
 body > main { flex: 1 0 auto; }
